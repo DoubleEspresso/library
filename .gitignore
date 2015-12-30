@@ -1,0 +1,28 @@
+#compiled object files
+*.slo
+*.o
+*.lo
+*.obj
+
+#precompiled headers
+*.gch
+*.pch
+
+#dynamic libraries
+*.so
+*.dylib
+*.dll
+
+#fortran mod files
+*.mod
+
+# static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+#executables
+*.exe
+*.out
+*.app
