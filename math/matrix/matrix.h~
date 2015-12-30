@@ -1,0 +1,395 @@
+#ifndef MATH_MATRIX_H
+#define MATH_MATRIX_H
+
+#include <cassert>
+#include <string.h>
+#include <vector>
+
+#include "../../concurrent/threads.h"
+#include "../../utils/timer.h"
+#include "../../system/hardware.h"
+
+template<typename T>
+class Matrix
+{
+ public:
+ Matrix(int r, int c) : rows(r), cols(c), size(rows*cols), parallel(false), nb_threads(1)
+    {
+      data = new T[size];
+      memset(data,0,sizeof(T)*size);
+      scan();
+      if (parallel)
+	{
+	  bool hyperthreading = false;
+	  nb_threads = Hardware::cpu_count(hyperthreading);
+	  nb_threads *= (hyperthreading ? 2 : 1);	  
+	}
+    }
+  Matrix(const Matrix& other)
+    {
+      data = 0;
+      rows = other.rows;
+      cols = other.cols;
+      size = rows * cols;
+      data = new T[size];
+      memcpy(this->data, other.data, sizeof(T) * size);      
+    }
+
+  ~Matrix() { if (data) { delete[] data; data = 0; }}
+
+  T operator()(int r, int c) const { return data[r*cols + c]; }
+  
+  void operator=(const Matrix& other) { memcpy(this->data, other.data, sizeof(T) * size); }
+
+  T data_at(int j) { return T(data[j]); } 
+  void set(int r, int c, T val) { data[r*cols + c] = T(val); }
+  void set(int j, T val) { data[j] = val; }
+  T trace();
+  void scan() { parallel  = (size >= 275*275); } // for example
+  Matrix zeros();
+  void clear() { if (data) memset(data, 0, sizeof(T) * size); }
+  Matrix identity();
+  bool is_square() { return rows == cols; } 
+  int nb_rows() { return rows; }
+  int nb_cols() { return cols; }
+  bool resize();
+  Matrix inverse();
+  T * diag();
+  T * eigenvals();
+  T * eigenvecs();
+  void set_threads(int j) { nb_threads=j; }
+  int get_threads() { return nb_threads; }
+  
+  Matrix operator+(const Matrix& other);
+  Matrix operator-(const Matrix& other);
+  Matrix operator*(const Matrix& other);
+  Matrix operator+=(const Matrix& other);
+  Matrix operator-=(const Matrix& other);
+  Matrix operator*=(const Matrix& other);
+
+  Matrix operator*(const T& other);
+
+  // parallel operator overloads
+  static void parallel_multiply(void * data);
+  static void parallel_add(void * data);
+  static void parallel_sub(void * data);
+
+ private:
+  int rows;
+  int cols;
+  size_t size;
+  T * data;
+  bool parallel;
+  int nb_threads;
+};
+
+
+template<typename T>
+struct parallel_data
+{
+  const Matrix<T> * thism;
+  const Matrix<T> * other;
+  T * thread_data;
+  int start;
+  int stop;
+  size_t arr_size;
+};
+
+template<typename T>
+void Matrix<T>::parallel_multiply(void * data)
+{
+  parallel_data<T> * md = (parallel_data<T>*) data;
+  Matrix<T> * mr  = (Matrix<T>*) md->other;
+  Matrix<T> * ml  = (Matrix<T>*) md->thism;
+
+  assert(ml->nb_cols() == mr->nb_rows());
+  
+  int start_r = md->start;
+  int stop_r = md->stop;
+  int cols = ml->nb_cols();
+  T * res = md->thread_data;
+  
+  for (int r = start_r; r < stop_r; ++r)
+    {
+      for (int c1 = 0; c1 < cols; ++c1)
+	{	  
+	  T tmp = 0;
+	  for (int c=0; c < cols; ++c) tmp += (*ml)(r,c) * (*mr)(c,c1);	        	  
+	  res[(r-start_r) * cols + c1] = tmp;
+	}
+    }  
+}
+
+template<typename T>
+void Matrix<T>::parallel_add(void * data)
+{
+  parallel_data<T> * md = (parallel_data<T>*) data;
+  Matrix<T> * mr  = (Matrix<T>*) md->other;
+  Matrix<T> * ml  = (Matrix<T>*) md->thism;
+
+  assert(ml->nb_cols() == mr->nb_cols() && ml->nb_rows() == mr->nb_rows());
+  
+  int start_r = md->start;
+  int stop_r = md->stop;
+  int cols = ml->nb_cols();
+  T * res = md->thread_data;
+  
+  for (int r = start_r; r < stop_r; ++r)
+    {
+      for (int c1 = 0; c1 < cols; ++c1)
+	  res[(r-start_r) * cols + c1] = (*ml)(r,c1) + (*mr)(r,c1);
+    }  
+}
+
+template<typename T>
+void Matrix<T>::parallel_sub(void * data)
+{
+  parallel_data<T> * md = (parallel_data<T>*) data;
+  Matrix<T> * mr  = (Matrix<T>*) md->other;
+  Matrix<T> * ml  = (Matrix<T>*) md->thism;
+
+  assert(ml->nb_cols() == mr->nb_cols() && ml->nb_rows() == mr->nb_rows());
+  
+  int start_r = md->start;
+  int stop_r = md->stop;
+  int cols = ml->nb_cols();
+  T * res = md->thread_data;
+  
+  for (int r = start_r; r < stop_r; ++r)
+    {
+      for (int c1 = 0; c1 < cols; ++c1)
+	  res[(r-start_r) * cols + c1] = (*ml)(r,c1) - (*mr)(r,c1);
+    }  
+}
+
+template<typename T>
+Matrix<T> Matrix<T>::operator*(const Matrix& other)
+{
+  assert(this->cols == other.rows);
+  Matrix res(this->rows, other.cols);    
+  Timer clock;    
+  if (parallel)
+    {
+      std::vector<Thread*> threads;
+      std::vector<parallel_data<T>*> thread_data_v;
+
+      int remainder = this->rows % nb_threads;
+      int size_per_thread = (this->rows / nb_threads) * other.cols;
+      //printf("..rows(%d), cols(%d), threads(%d), size(%d), remainder(%d)\n",this->rows, other.cols, nb_threads, size_per_thread, remainder);
+      
+      int start =0;
+      for (int j=0; j<nb_threads; ++j)
+	{
+	  parallel_data<T> * md = new parallel_data<T>();
+	  md->other = &other;
+	  md->thism = this;
+
+	  if (j == nb_threads - 1) size_per_thread += remainder * other.cols;
+	  md->thread_data = new T[size_per_thread];
+	  md->start = start;
+	  md->stop = md->start + rows / nb_threads;
+	  md->arr_size = size_per_thread;
+	  if(j == nb_threads - 1) md->stop += remainder;
+
+	  //printf("..summary thread(%d)), start(%d), stop(%d), size(%d)\n",j, md->start, md->stop, md->arr_size);
+
+	  start = md->stop;
+	  threads.push_back(new Thread(j, (thread_fnc)parallel_multiply, (void*) md) );	  
+	  thread_data_v.push_back(md);
+	}
+      clock.start();
+      for (int j=0; j<nb_threads; ++j) threads[j]->start();
+      for (int j=0; j<nb_threads; ++j) threads[j]->join();
+      
+      // TODO : make parallel also
+      int offset = 0;
+      for (int j=0; j<nb_threads; ++j)
+	{
+	  for (int i=0; i<thread_data_v[j]->arr_size; ++i) 
+	    {
+	      res.set(offset+i, thread_data_v[j]->thread_data[i]);
+	    }
+	  offset += thread_data_v[j]->arr_size;
+	}
+      clock.stop();
+      clock.print("..parallel matrix multiply");
+      
+    }
+  else
+    {
+      clock.start();
+      for (int r = 0; r < rows; ++r)
+	{
+	  for (int c1 = 0; c1 < cols; ++c1)
+	    {	  
+	      T tmp = T(0);
+	      for (int c=0; c < cols; ++c) tmp += (*this)(r,c) * other(c,c1);	        	  
+	      res.set(r,c1,tmp);
+	    }
+	}
+      clock.stop();
+      clock.print("..serial matrix multiply");
+    }
+  /*
+      int err = 0;
+      for (int r=0; r < rows; ++r)
+	{
+	  for (int c1 = 0; c1 < cols; ++c1)
+	    {
+	      T tmp = res(r,c1) - res2(r,c1);
+	      if (tmp.real != 0 || tmp.imag != 0 ) 
+		{
+		  printf("[%d,%d] --> (%g,%g) != (%g,%g)\n", r,c1, res(r,c1).real, res(r,c1).imag, res2(r,c1).real, res(r,c1).imag);
+		  err++;
+		}
+	    }
+	}
+      printf("..scan finished, %d errors!\n", err);
+  */
+  return res;
+}
+
+template<typename T>
+Matrix<T> Matrix<T>::operator+(const Matrix& other)
+{
+  assert(this->cols == other.cols && this->rows == other.rows);
+  Matrix res(this->rows, this->cols);    
+  Timer clock;    
+  if (parallel)
+    {
+      std::vector<Thread*> threads;
+      std::vector<parallel_data<T>*> thread_data_v;
+      parallel_data<T> * md = new parallel_data<T>();
+
+      int remainder = this->rows % nb_threads;
+      int size_per_thread = (this->rows / nb_threads) * other.cols;
+      //printf("..rows(%d), cols(%d), threads(%d), size(%d), remainder(%d)\n",this->rows, other.cols, nb_threads, size_per_thread, remainder);
+
+      int start =0;
+      for (int j=0; j<nb_threads; ++j)
+	{
+	  parallel_data<T> * md = new parallel_data<T>();
+	  md->other = &other;
+	  md->thism = this;
+	  
+	  if (j == nb_threads - 1) size_per_thread += remainder * other.cols;
+	  md->thread_data = new T[size_per_thread];
+	  md->start = start;
+	  md->stop = md->start + rows / nb_threads;
+	  md->arr_size = size_per_thread;
+	  if(j == nb_threads - 1) md->stop += remainder;
+	  
+	  //printf("..summary thread(%d)), start(%d), stop(%d), size(%d)\n",j, md->start, md->stop, md->arr_size);
+	  
+	  start = md->stop;
+	  threads.push_back(new Thread(j, (thread_fnc)parallel_add, (void*) md) );	  
+	  thread_data_v.push_back(md);
+	}
+      clock.start();
+      for (int j=0; j<nb_threads; ++j) threads[j]->start();
+      for (int j=0; j<nb_threads; ++j) threads[j]->join();
+      
+      // TODO : make parallel also
+      int offset = 0;
+      for (int j=0; j<nb_threads; ++j)
+	{
+	  for (int i=0; i<thread_data_v[j]->arr_size; ++i) 
+	    {
+	      res.set(offset+i, thread_data_v[j]->thread_data[i]);
+	    }
+	  offset += thread_data_v[j]->arr_size;
+	}
+      clock.stop();
+      clock.print("..parallel matrix multiply");
+      
+    }
+  else
+    {
+      clock.start();
+      for (int r = 0; r < rows; ++r)
+	{
+	  for (int c1 = 0; c1 < cols; ++c1)
+	    {		      
+	      T tmp = (*this)(r,c1) + other(r,c1);
+	      res.set(r,c1,tmp);
+	    }
+	}
+      clock.stop();
+      clock.print("..serial matrix multiply");
+    }
+  return res;
+}
+
+
+template<typename T>
+Matrix<T> Matrix<T>::operator-(const Matrix& other)
+{
+  assert(this->cols == other.cols && this->rows == other.rows);
+  Matrix res(this->rows, this->cols);    
+  Timer clock;    
+  if (parallel)
+    {
+      std::vector<Thread*> threads;
+      std::vector<parallel_data<T>*> thread_data_v;
+      parallel_data<T> * md = new parallel_data<T>();
+
+      int remainder = this->rows % nb_threads;
+      int size_per_thread = (this->rows / nb_threads) * other.cols;
+      //printf("..rows(%d), cols(%d), threads(%d), size(%d), remainder(%d)\n",this->rows, other.cols, nb_threads, size_per_thread, remainder);
+
+      int start =0;
+      for (int j=0; j<nb_threads; ++j)
+	{
+	  parallel_data<T> * md = new parallel_data<T>();
+	  md->other = &other;
+	  md->thism = this;
+	  
+	  if (j == nb_threads - 1) size_per_thread += remainder * other.cols;
+	  md->thread_data = new T[size_per_thread];
+	  md->start = start;
+	  md->stop = md->start + rows / nb_threads;
+	  md->arr_size = size_per_thread;
+	  if(j == nb_threads - 1) md->stop += remainder;
+	  
+	  //printf("..summary thread(%d)), start(%d), stop(%d), size(%d)\n",j, md->start, md->stop, md->arr_size);
+	  
+	  start = md->stop;
+	  threads.push_back(new Thread(j, (thread_fnc)parallel_sub, (void*) md) );	  
+	  thread_data_v.push_back(md);
+	}
+      clock.start();
+      for (int j=0; j<nb_threads; ++j) threads[j]->start();
+      for (int j=0; j<nb_threads; ++j) threads[j]->join();
+      
+      // TODO : make parallel also
+      int offset = 0;
+      for (int j=0; j<nb_threads; ++j)
+	{
+	  for (int i=0; i<thread_data_v[j]->arr_size; ++i) 
+	    {
+	      res.set(offset+i, thread_data_v[j]->thread_data[i]);
+	    }
+	  offset += thread_data_v[j]->arr_size;
+	}
+      clock.stop();
+      clock.print("..parallel matrix multiply");
+      
+    }
+  else
+    {
+      clock.start();
+      for (int r = 0; r < rows; ++r)
+	{
+	  for (int c1 = 0; c1 < cols; ++c1)
+	    {		      
+	      T tmp = (*this)(r,c1) - other(r,c1);
+	      res.set(r,c1,tmp);
+	    }
+	}
+      clock.stop();
+      clock.print("..serial matrix multiply");
+    }
+  return res;
+}
+#endif
+
