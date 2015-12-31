@@ -1,9 +1,12 @@
+#pragma once
+
 #ifndef MATH_MATRIX_H
 #define MATH_MATRIX_H
 
 #include <cassert>
 #include <string.h>
 #include <vector>
+#include <math.h>
 
 #include "../../concurrent/threads.h"
 #include "../../utils/timer.h"
@@ -56,7 +59,8 @@ class Vector
   T dot(const Vector& other);
   T norm();
   Vector normalize();
-  Vector cross(const Vector& other); 
+  Vector cross(const Vector& other);
+  Vector conj();
 
   // vector-vector operations
   Vector operator+(const Vector& other);
@@ -98,36 +102,69 @@ Vector<T> Vector<T>::operator/(const T& other)
   return res;
 }
 
+template<typename T>
+Vector<T> Vector<T>::operator*(const T& other)
+{
+  Vector res(*this);
+  for(int j=0; j<rows; ++j) res.set(j, data[j] * other);
+  return res;
+}
+
+template<typename T>
+Vector<T> Vector<T>::operator-(const Vector& other)
+{
+  Vector res(*this);
+  for (int j=0; j<rows; ++j) res.set(j, data[j] - other(j));
+  return res;
+}
+
+template<typename T>
+inline Vector<T> operator*(const T& other, Vector<T>& vec)
+{
+  return vec * other;
+}
+
+template<typename T>
+inline Vector<T> Vector<T>::conj()
+{
+  Vector res(*this);
+  for(int j=0; j<rows; ++j) res(j) = (*this)(j).conj();
+  return res;
+}
+
 // generic implementation for complex types
 template<typename T>
 T Vector<T>::norm()
 {
-  T tmp = this->dot(*this);
+  T tmp = (*this).conj().dot(*this);
   return tmp.sqrt();
 }
 
 // specialized for int,float, and double data types
-template<> int Vector<int>::norm()
+template<>
+inline int Vector<int>::norm()
 {
   int tmp = this->dot(*this);
-  return std::sqrt(tmp);
+  return sqrt(tmp);
 }
-template<> float Vector<float>::norm()
+template<>
+inline float Vector<float>::norm()
 {
   float tmp = this->dot(*this);
-  return std::sqrt(tmp);
+  return sqrt(tmp);
 }
-template<> double Vector<double>::norm()
+template<>
+inline double Vector<double>::norm()
 {
   double tmp = this->dot(*this);
-  return std::sqrt(tmp);
+  return sqrt(tmp);
 }
 
 template<typename T>
 Vector<T> Vector<T>::normalize()
 {
-  T tmp = this->dot(*this);
-  return (*this) / tmp.sqrt();
+  //T tmp = this->dot(*this);
+  return (*this) / this->norm();
 }
 
 template<typename T>
@@ -198,6 +235,9 @@ class Matrix
   void set_threads(int j) { nb_threads=j; }
   int get_threads() { return nb_threads; }
   Matrix minor(int r, int c);
+  Vector<T> column(int c) const;
+  void set_column(int c, const Vector<T>& vin) const;
+  Matrix transpose();
   
   // matrix-matrix operations
   Matrix operator+(const Matrix& other);
@@ -535,7 +575,7 @@ Matrix<T> Matrix<T>::operator-(const Matrix& other)
   return res;
 }
 
-// matrix resize/minor operations
+// matrix resize/minor/column/row/transpose operations
 template<typename T>
 Matrix<T> Matrix<T>::minor(int r, int c)
 {
@@ -555,6 +595,44 @@ Matrix<T> Matrix<T>::minor(int r, int c)
 	}
     }
   return res; 
+}
+
+template<typename T>
+Vector<T> Matrix<T>::column(int c) const
+{
+  assert(c <= cols);
+  Vector<T> res(rows);
+  for(int r=0; r<rows; ++r) res.set(r,(*this)(r,c));
+  return res;
+}
+
+template<typename T>
+void Matrix<T>::set_column(int c, const Vector<T>& vin) const
+{
+  assert(vin.nb_rows() == rows && c <= cols);
+  for(int r=0; r < rows; ++r)
+    data[r*cols + c] = vin(r);
+}
+
+template<typename T>
+Matrix<T> Matrix<T>::transpose()
+{
+  Matrix trans(cols, rows);
+  for(int r=0; r<rows; ++r)
+    {
+      for(int c=0; c<cols; ++c) trans.set(c,r, (*this)(r,c));
+    }
+  return trans;
+}
+
+template<typename T>
+Matrix<T> Matrix<T>::identity()
+{
+  Matrix id(rows,cols);
+  for(int j=0; j<rows*cols; j += cols + 1)
+    id.set(j,T(1));
+
+  return id;
 }
 
 // matrix-vector multiplication

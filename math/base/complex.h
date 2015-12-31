@@ -16,7 +16,7 @@ struct Complex
   Complex operator=(const Complex& other) { this->imag = other.imag; this->real = other.real; }
 
   // basic operations
-  T conj() { this->imag *= T(-1); return *this; }
+  Complex conj() { this->imag *= T(-1); return *this; }
   T norm() { return T(real*real+imag*imag); }
   T abs() { return T(sqrt( norm() )); }
   Complex sqrt();
@@ -45,18 +45,25 @@ struct Complex
 
 // The principal root of a complex number -- 
 // using polar form z^0.5 = sqrt(r)*exp{i*arctan(theta)*0.5} --> euler's formula exp{i*theta} = cos + i sin and half angle formulas 
-// will also work for real types
+// will also work for real types .. FIXME
 template<typename T>
 inline Complex<T> Complex<T>::sqrt()
 {
+  if (real == 0) return Complex<T>(0,std::sqrt(imag));
+  
   double r = std::sqrt(real*real+imag*imag);
   double rsqrt = std::sqrt(r);
+  double theta = atan(imag / real);
+  return Complex<T>(rsqrt * cos(theta * 0.5), rsqrt * sin(theta * 0.5));
+  /*
   double cos = double( real / double(r) );
   double sin = double( imag / double(r) );
 
   double cos_half = std::sqrt(0.5 * (cos+1));
   double sin_half = std::sqrt(0.5 * (-cos+1));
   return Complex<T>(rsqrt * cos_half, rsqrt * sin_half);
+  */
+  
 }
 
 // complex addition

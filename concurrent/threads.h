@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef CONCURRENT_THREADS_H
 #define CONCURRENT_THREADS_H
 
@@ -82,7 +84,7 @@ public:
   ConditionVariable sleep_condition;  
 };
 
-
+/*
 namespace 
 {
   extern "C"
@@ -90,6 +92,7 @@ namespace
     long do_async(Thread *thread, void * data) { thread->work_fnc(data); return 0;}
   }
 }
+*/
 
 #endif
   
