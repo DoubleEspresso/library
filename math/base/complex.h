@@ -16,7 +16,7 @@ struct Complex
   Complex operator=(const Complex& other) { this->imag = other.imag; this->real = other.real; }
 
   // basic operations
-  Complex conj() { this->imag *= T(-1); return *this; }
+    Complex conj() { return Complex<T>(real, -imag); }
   T norm() { return T(real*real+imag*imag); }
   T abs() { return T(sqrt( norm() )); }
   Complex sqrt();

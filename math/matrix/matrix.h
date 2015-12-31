@@ -89,8 +89,9 @@ template<typename T>
 T Vector<T>::dot(const Vector& other)
 {
   assert( this->rows == other.nb_rows());
-  T res = 0;
-  for(int j=0; j<this->rows; ++j) res += (*this)(j) * other(j);
+  T res(0);
+  for(int j=0; j<this->rows; ++j) res += (data[j] * other(j));
+
   return res;
 }
 
@@ -128,7 +129,7 @@ template<typename T>
 inline Vector<T> Vector<T>::conj()
 {
   Vector res(*this);
-  for(int j=0; j<rows; ++j) res(j) = (*this)(j).conj();
+  for(int j=0; j<rows; ++j) res.set(j,data[j].conj());
   return res;
 }
 
@@ -163,8 +164,8 @@ inline double Vector<double>::norm()
 template<typename T>
 Vector<T> Vector<T>::normalize()
 {
-  //T tmp = this->dot(*this);
-  return (*this) / this->norm();
+  Vector res(*this);
+  return res / res.norm();
 }
 
 template<typename T>
