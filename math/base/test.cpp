@@ -72,22 +72,22 @@ int main(int argc, char ** argv)
 
 
 
-  Matrix<Complex_f> m1(2,2); // should compute in parallel automatically
+  Matrix<Complex_f> m1(3,3); // should compute in parallel automatically
   
   //  for (int j=0; j<3*3; ++j) m1.set(j, Complex_f(j+1,1)); 
   m1.set(0,Complex_f(1,0));
   m1.set(1,Complex_f(-1,0));
-  m1.set(2,Complex_f(0,1));
-  m1.set(3,Complex_f(-1,0));
-  //m1.set(4,Complex_f(0,1));
-  //  m1.set(5,Complex_f(-1,0));
-  //m1.set(6,Complex_f(0,1));
-  //m1.set(7,Complex_f(1,0));
-  //m1.set(8,Complex_f(1,1));
+  m1.set(2,Complex_f(0,0));
+  m1.set(3,Complex_f(0,0));
+  m1.set(4,Complex_f(0,1));
+  m1.set(5,Complex_f(-1,0));
+  m1.set(6,Complex_f(0,1));
+  m1.set(7,Complex_f(1,0));
+  m1.set(8,Complex_f(1,1));
   
-  for(int r = 0; r < 2; ++r)
+  for(int r = 0; r < 3; ++r)
     {
-      for (int c=0; c < 2; ++c)
+      for (int c=0; c < 3; ++c)
 	{
 	    printf(" (%g,%g) ", m1(r,c).real, m1(r,c).imag);
 	}
@@ -98,9 +98,9 @@ int main(int argc, char ** argv)
   // LinearAlgebra::gram_schmidt<Complex<float> >(Matrix<Complex<float> > const&)
   Matrix<Complex_f> mx = LinearAlgebra::gram_schmidt<Complex_f>(m1);
   printf("\n");
-  for(int r = 0; r < 2; ++r)
+  for(int r = 0; r < 3; ++r)
     {
-      for (int c=0; c < 2; ++c)
+      for (int c=0; c < 3; ++c)
 	{
 	  printf(" (%g,%g) ", mx(r,c).real, mx(r,c).imag);
 	}
@@ -110,23 +110,28 @@ int main(int argc, char ** argv)
   // test orthogonality
   Vector<Complex_f> v1 = mx.column(0);
   Vector<Complex_f> v2 = mx.column(1);
-  //Vector<Complex_f> v3 = mx.column(2);
+  Vector<Complex_f> v3 = mx.column(2);
 
-  Complex_f v12 = (v1.conj()).dot(v2);
-  //Complex_f v13 = (v2.conj()).dot(v3);
-  //Complex_f v23 = (v1.conj()).dot(v3);
+  Complex_f v12 = (v1.conj()).dot(v2); //ok
+  Complex_f v23 = (v2.conj()).dot(v3); //ok
+  Complex_f v13 = (v1.conj()).dot(v3); //not ok
   
   printf("\n\n");
   printf(" (%g,%g)\n", v12.real, v12.imag);
   printf("\n\n");
-  /*
+
+  //for(int r=0; r<3; ++r) printf(" (%g,%g) ", v1(r).real, v1(r).imag);
+  //printf("\n");
+  //for(int r=0; r<3; ++r) printf(" (%g,%g) ", v3(r).real, v3(r).imag);
+  //printf("\n");
+  
   printf(" (%g,%g)\n", v13.real, v13.imag);
   printf("\n\n");
 
   printf(" (%g,%g)\n", v23.real, v23.imag);
   printf("\n\n");
-  */
-//for(int r=0; r<3; ++r) printf(" (%g,%g)\n", m2(r).real, m2(r).imag);
+  
+
 
   //printf("\n");
   //printf(" (%g,%g)\n", m3.norm().real, m3.norm().imag);
