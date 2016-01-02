@@ -12,15 +12,19 @@
 namespace LinearAlgebra
 {
   // modified gram-schmidt orthogonalization
-  // returns a matrix whos columns are the orthonormal-ized
+  // returns a matrix whose columns are the orthonormal-ized
   // column vectors of the input matrix
   template<typename T> Matrix<T> gram_schmidt(const Matrix<T>& input);
   
-  // qr-factorization, svd, etc..
+  // qr-factorization
+  template<typename T> void QR(const Matrix<T>& input, Matrix<T>& Q, Matrix<T>& R);
+  // svd, ..
 };
 
 
-// modified gram-schmidt orthonormalization
+// modified gram-schmidt orthonormalization for numerical stability
+// input: mxn matrix 
+// output: mxn matrix whose columns are orthonormal
 // todo -- parallelize over cols for large matrices
 template<typename T>
 inline Matrix<T> LinearAlgebra::gram_schmidt(const Matrix<T>& input)
@@ -41,5 +45,19 @@ inline Matrix<T> LinearAlgebra::gram_schmidt(const Matrix<T>& input)
     }
   return res;
 }
+
+// qr-decomposition of nxn matrix 
+// uses modified gram-schmidt to compute matrix Q
+template<typename T>
+inline void LinearAlgebra::QR(const Matrix<T>& input, Matrix<T>& Q, Matrix<T>& R)
+{
+  assert(input.nb_rows() == input.nb_cols());
+  Matrix<T> res(input);  
+  
+  Q = gram_schmidt(input);
+  Matrix<T> Qt = Q.transpose().conj();
+  R = Qt * input;
+}
+
 
 #endif

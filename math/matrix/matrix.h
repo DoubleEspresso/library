@@ -239,6 +239,7 @@ class Matrix
   Vector<T> column(int c) const;
   void set_column(int c, const Vector<T>& vin) const;
   Matrix transpose();
+  Matrix conj();
   
   // matrix-matrix operations
   Matrix operator+(const Matrix& other);
@@ -613,6 +614,21 @@ void Matrix<T>::set_column(int c, const Vector<T>& vin) const
   assert(vin.nb_rows() == rows && c <= cols);
   for(int r=0; r < rows; ++r)
     data[r*cols + c] = vin(r);
+}
+
+template<typename T>
+Matrix<T> Matrix<T>::conj()
+{
+  Matrix cc(rows, cols);
+  for(int r=0; r<rows; ++r)
+    {
+      for(int c=0; c<cols; ++c)	
+	{
+	  T tmp = data[r*cols + c]; tmp.imag *= -1;
+	  cc.set(r,c,tmp);
+	}
+    }
+  return cc;
 }
 
 template<typename T>

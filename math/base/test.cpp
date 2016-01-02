@@ -95,19 +95,32 @@ int main(int argc, char ** argv)
     }  
 
   
-  // LinearAlgebra::gram_schmidt<Complex<float> >(Matrix<Complex<float> > const&)
-  Matrix<Complex_f> mx = LinearAlgebra::gram_schmidt<Complex_f>(m1);
+  //Matrix<Complex_f> mx = LinearAlgebra::gram_schmidt<Complex_f>(m1);
+  Matrix<Complex_f> Q(3,3);
+  Matrix<Complex_f> R(3,3);
+  LinearAlgebra::QR<Complex_f>(m1, Q, R);
+
   printf("\n");
   for(int r = 0; r < 3; ++r)
     {
       for (int c=0; c < 3; ++c)
 	{
-	  printf(" (%g,%g) ", mx(r,c).real, mx(r,c).imag);
+	  printf(" (%g,%g) ", Q(r,c).real, Q(r,c).imag);
+	}
+      printf("\n");
+    }
+      printf("\n");      printf("\n");
+  for(int r = 0; r < 3; ++r)
+    {
+      for (int c=0; c < 3; ++c)
+	{
+	  printf(" (%g,%g) ", R(r,c).real, R(r,c).imag);
 	}
       printf("\n");
     }
 
   // test orthogonality
+  /*
   Vector<Complex_f> v1 = mx.column(0);
   Vector<Complex_f> v2 = mx.column(1);
   Vector<Complex_f> v3 = mx.column(2);
@@ -135,6 +148,6 @@ int main(int argc, char ** argv)
 
   //printf("\n");
   //printf(" (%g,%g)\n", m3.norm().real, m3.norm().imag);
-
+  */
 return 0;
 }
