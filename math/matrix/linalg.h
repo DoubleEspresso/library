@@ -18,6 +18,11 @@ namespace LinearAlgebra
   
   // qr-factorization
   template<typename T> void QR(const Matrix<T>& input, Matrix<T>& Q, Matrix<T>& R);
+
+  // hessenberg matrix, for symmetric matrices, this will return the householder transformation
+  // matrix, which can be used to convert symmetric matrices to tri-diagonal form
+  template<typename T> Matrix<T> hessenberg_form(const Matrix<T>& input, const int col);
+  
   // svd, ..
 };
 
@@ -59,5 +64,47 @@ inline void LinearAlgebra::QR(const Matrix<T>& input, Matrix<T>& Q, Matrix<T>& R
   R = Qt * input;
 }
 
+// the hessenberg form of a square matrix .. for symmetric matrices
+// this method returns the householder transformation matrix
+template<typename T>
+Matrix<T> hessenberg_form(const Matrix<T>& input, const int col)
+{
+  assert(input.nb_rows() == input.nb_cols() && col < input.nb_cols());
+
+  // Remarks/notes: To compute the Hessenberg form (or householder matrix) P .. we must find x,y pair such that, P.x = y,
+  // x is given as the nth-col of the input matrix, and y can be computed from the property P.x = y. This argument assumes one knows
+  // that P generally takes the form of a reflection operator about the hyperplane defined by unit vector w ... ie P = I - 2.0 * w * wtranspose
+  Vector<T> x = input.column(col);
+  Vector<T> y(x.nb_rows());
+
+  T ynorm = T(0);
+  for (int j=0; j<col+1;++j)
+    {
+      y.set(j,x(j));
+      ynorm += x(j)*x(j);
+    }
+  // TODO : fix square root to accept both complex and real types..
+  T x2 = x.dot(x);
+  T remainder = x2 - ynorm; remainder = sqrt(remainder); //remainder.sqrt();
+  y.set(col+1,remainder);
+  
+  // since P is the reflection operator about the hyperplane whose orientation is given by w,
+  // and y-defined ..  w can be computed from ==> w = (x-y)/norm(x-y), and P = I - 2*w.wtranspose()
+  Vector<T> w2 = x - y;
+  w2 = w2.normalize();
+
+  Matrix<T> w(input.nb_rows(),1);
+  w.set_column(0,w2);
+
+  Matrix<T> P(input.nb_rows(), input.nb_cols());
+  P = P.identity();
+  Matrix<T> wt = w.transpose();
+
+  // TODO : remove the typecast below
+  // For symmetric input matrices, P is the householder transformation, for general input, P is the hessenberg matrix
+  // define w to be a matrix of column nb 1 -- technically a vector
+  P = P - T(2.0) * (w * wt);  
+  return P;
+}
 
 #endif

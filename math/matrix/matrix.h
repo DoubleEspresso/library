@@ -248,7 +248,7 @@ class Matrix
   Matrix operator+=(const Matrix& other);
   Matrix operator-=(const Matrix& other);
   Matrix operator*=(const Matrix& other);
-  Matrix operator*(const T& other);
+  Matrix operator*(const T& other) const;
 
   // matrix-vector operations
   Vector<T> operator*(const Vector<T>& other);
@@ -291,7 +291,7 @@ void Matrix<T>::parallel_multiply(void * data)
   
   int start_r = md->start;
   int stop_r = md->stop;
-  int cols = ml->nb_cols();
+  int cols = mr->nb_cols();
   T * res = md->thread_data;
   
   for (int r = start_r; r < stop_r; ++r)
@@ -405,7 +405,7 @@ Matrix<T> Matrix<T>::operator*(const Matrix& other)
       clock.start();
       for (int r = 0; r < rows; ++r)
 	{
-	  for (int c1 = 0; c1 < cols; ++c1)
+	  for (int c1 = 0; c1 < other.nb_cols(); ++c1)
 	    {	  
 	      T tmp = T(0);
 	      for (int c=0; c < cols; ++c) tmp += (*this)(r,c) * other(c,c1);	        	  
@@ -651,6 +651,22 @@ Matrix<T> Matrix<T>::identity()
 
   return id;
 }
+
+template<typename T>
+Matrix<T> Matrix<T>::operator*(const T& other) const
+{
+  Matrix res(*this);
+  for(int j=0; j<rows*cols; ++j) res.set(j,data[j]*other);
+  return res;
+}
+
+
+template<typename T>
+inline Matrix<T> operator*(const T& other, const Matrix<T>& m)
+{
+  return m * other;
+}
+
 
 // matrix-vector multiplication
 // todo-parallel implementation

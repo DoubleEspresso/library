@@ -72,9 +72,9 @@ int main(int argc, char ** argv)
 
 
 
-  Matrix<Complex_f> m1(3,3); // should compute in parallel automatically
+  Matrix<float> m1(4,4); // should compute in parallel automatically
   
-  //  for (int j=0; j<3*3; ++j) m1.set(j, Complex_f(j+1,1)); 
+  /*
   m1.set(0,Complex_f(1,0));
   m1.set(1,Complex_f(-1,0));
   m1.set(2,Complex_f(0,0));
@@ -84,17 +84,35 @@ int main(int argc, char ** argv)
   m1.set(6,Complex_f(0,1));
   m1.set(7,Complex_f(1,0));
   m1.set(8,Complex_f(1,1));
+  */
+
+  m1.set(0,4); m1.set(1,1); m1.set(2,-2); m1.set(3,2);
+  m1.set(4,1); m1.set(5,2); m1.set(6,0); m1.set(7,1);
+  m1.set(8,-2); m1.set(9,0); m1.set(10,3); m1.set(11,-2);
+  m1.set(12,2); m1.set(13,1); m1.set(14,-2); m1.set(15,-1);
   
-  for(int r = 0; r < 3; ++r)
+  for(int r = 0; r < 4; ++r)
     {
-      for (int c=0; c < 3; ++c)
+      for (int c=0; c < 4; ++c)
 	{
-	    printf(" (%g,%g) ", m1(r,c).real, m1(r,c).imag);
+	  printf(" (%g) ", m1(r,c));//.real, m1(r,c).imag);
 	}
       printf("\n");
     }  
 
+  Matrix<float> res = hessenberg_form<float>(m1, 0);
   
+  printf("\n");
+  for(int r = 0; r < 4; ++r)
+    {
+      for (int c=0; c < 4; ++c)
+	{
+	  printf(" (%g) ", res(r,c));//, res(r,c).imag);
+	}
+      printf("\n");
+    }
+  
+  /*
   //Matrix<Complex_f> mx = LinearAlgebra::gram_schmidt<Complex_f>(m1);
   Matrix<Complex_f> Q(3,3);
   Matrix<Complex_f> R(3,3);
@@ -118,36 +136,7 @@ int main(int argc, char ** argv)
 	}
       printf("\n");
     }
-
-  // test orthogonality
-  /*
-  Vector<Complex_f> v1 = mx.column(0);
-  Vector<Complex_f> v2 = mx.column(1);
-  Vector<Complex_f> v3 = mx.column(2);
-
-  Complex_f v12 = (v1.conj()).dot(v2); //ok
-  Complex_f v23 = (v2.conj()).dot(v3); //ok
-  Complex_f v13 = (v1.conj()).dot(v3); //not ok
-  
-  printf("\n\n");
-  printf(" (%g,%g)\n", v12.real, v12.imag);
-  printf("\n\n");
-
-  //for(int r=0; r<3; ++r) printf(" (%g,%g) ", v1(r).real, v1(r).imag);
-  //printf("\n");
-  //for(int r=0; r<3; ++r) printf(" (%g,%g) ", v3(r).real, v3(r).imag);
-  //printf("\n");
-  
-  printf(" (%g,%g)\n", v13.real, v13.imag);
-  printf("\n\n");
-
-  printf(" (%g,%g)\n", v23.real, v23.imag);
-  printf("\n\n");
-  
-
-
-  //printf("\n");
-  //printf(" (%g,%g)\n", m3.norm().real, m3.norm().imag);
   */
+
 return 0;
 }
