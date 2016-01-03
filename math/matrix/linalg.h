@@ -67,7 +67,7 @@ inline void LinearAlgebra::QR(const Matrix<T>& input, Matrix<T>& Q, Matrix<T>& R
 // the hessenberg form of a square matrix .. for symmetric matrices
 // this method returns the householder transformation matrix
 template<typename T>
-Matrix<T> hessenberg_form(const Matrix<T>& input, const int col)
+inline Matrix<T> LinearAlgebra::hessenberg_form(const Matrix<T>& input, const int col)
 {
   assert(input.nb_rows() == input.nb_cols() && col < input.nb_cols());
 

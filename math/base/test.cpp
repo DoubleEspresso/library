@@ -100,7 +100,7 @@ int main(int argc, char ** argv)
       printf("\n");
     }  
 
-  Matrix<float> res = hessenberg_form<float>(m1, 0);
+  Matrix<float> res = LinearAlgebra::hessenberg_form<float>(m1, 0);
   
   printf("\n");
   for(int r = 0; r < 4; ++r)
