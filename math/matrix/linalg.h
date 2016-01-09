@@ -44,7 +44,7 @@ inline Matrix<T> LinearAlgebra::gram_schmidt(const Matrix<T>& input)
       for(int j=c+1; j<input.nb_cols(); ++j)
 	{
 	  Vector<T> vj = res.column(j);
-	  vj = vj - vj.dot(vi.conj()) * vi; // vi is unit, so norm(vi) is not included in projection
+	  vj = vj - vj.dot(vi) * vi; // vi is unit, so norm(vi) is not included in projection
 	  res.set_column(j,vj);
 	}
     }

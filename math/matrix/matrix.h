@@ -60,7 +60,7 @@ class Vector
   T norm();
   Vector normalize();
   Vector cross(const Vector& other);
-  Vector conj();
+  Vector conj() const;
 
   // vector-vector operations
   Vector operator+(const Vector& other);
@@ -89,8 +89,9 @@ template<typename T>
 T Vector<T>::dot(const Vector& other)
 {
   assert( this->rows == other.nb_rows());
+  Vector<T> cc(other.conj());
   T res(0);
-  for(int j=0; j<this->rows; ++j) res += (data[j] * other(j));
+  for(int j=0; j<this->rows; ++j) res += (data[j] * cc(j));
 
   return res;
 }
@@ -125,19 +126,38 @@ inline Vector<T> operator*(const T& other, Vector<T>& vec)
   return vec * other;
 }
 
+// vector conjugation for complex types
 template<typename T>
-inline Vector<T> Vector<T>::conj()
+inline Vector<T> Vector<T>::conj() const
 {
   Vector res(*this);
   for(int j=0; j<rows; ++j) res.set(j,data[j].conj());
   return res;
 }
 
-// generic implementation for complex types
+template<>
+inline Vector<int> Vector<int>::conj() const
+{
+  return *this;
+}
+
+template<>
+inline Vector<float> Vector<float>::conj() const
+{
+  return *this;
+}
+
+template<>
+inline Vector<double> Vector<double>::conj() const
+{
+  return *this;
+}
+
+
 template<typename T>
 T Vector<T>::norm()
 {
-  T tmp = (*this).conj().dot(*this);
+  T tmp = (*this).dot(*this);
   return tmp.sqrt();
 }
 
