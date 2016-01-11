@@ -22,6 +22,10 @@ namespace LinearAlgebra
   // hessenberg matrix, for symmetric matrices, this will return the householder transformation
   // matrix, which can be used to convert symmetric matrices to tri-diagonal form
   template<typename T> Matrix<T> hessenberg_form(const Matrix<T>& input, const int col);
+
+  // given an nxn symmetric matrix A, this method reduces A to tridiagonal form using n-2
+  // orthogonal transmformations (householder method)
+  template<typename T> Matrix<T> tridiagonal_householder(const Matrix<T>& input);
   
   // svd, ..
 };
@@ -83,7 +87,6 @@ inline Matrix<T> LinearAlgebra::hessenberg_form(const Matrix<T>& input, const in
       y.set(j,x(j));
       ynorm += x(j)*x(j);
     }
-  // TODO : fix square root to accept both complex and real types..
   T x2 = x.dot(x);
   T remainder = x2 - ynorm; remainder = sqrt(remainder); //remainder.sqrt();
   y.set(col+1,remainder);
@@ -100,11 +103,30 @@ inline Matrix<T> LinearAlgebra::hessenberg_form(const Matrix<T>& input, const in
   P = P.identity();
   Matrix<T> wt = w.transpose();
 
-  // TODO : remove the typecast below
+  // TODO: floating point exception without the braces around (w * wt) ??
   // For symmetric input matrices, P is the householder transformation, for general input, P is the hessenberg matrix
   // define w to be a matrix of column nb 1 -- technically a vector
-  P = P - T(2.0) * (w * wt);  
+  P = P - 2.0 * (w * wt);  
   return P;
+}
+
+// TODO: speedups as outlined in NR 11.2.10
+template<typename T>
+Matrix<T> LinearAlgebra::tridiagonal_householder(const Matrix<T>& input)
+{
+  assert(input.nb_rows() == input.nb_cols());
+  int n = input.nb_rows();
+
+  Matrix<T> A(input);
+  Matrix<T> prev(input);
+  
+  for(int i=0; i<n-2; ++i)
+    {
+      A = hessenberg_form(A,i);
+      A = A * prev * A;
+      prev = A;
+    }
+  return A;
 }
 
 #endif

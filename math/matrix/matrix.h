@@ -260,6 +260,8 @@ class Matrix
   void set_column(int c, const Vector<T>& vin) const;
   Matrix transpose();
   Matrix conj();
+  void pad(int i); // inserts row/cols of identity into upper left portion of matrix (in place)
+  void submatrix(int r, int c); // in place return of matrix starting at idx (r,c)
   
   // matrix-matrix operations
   Matrix operator+(const Matrix& other);
@@ -680,13 +682,61 @@ Matrix<T> Matrix<T>::operator*(const T& other) const
   return res;
 }
 
-
-template<typename T>
-inline Matrix<T> operator*(const T& other, const Matrix<T>& m)
+template<typename T, typename T2>
+inline Matrix<T> operator*(const T2& other, const Matrix<T>& m)
 {
   return m * other;
 }
 
+// inserts "i" identity rows (and corresponding cols)
+// into the upper left portion of matrix, this is an inplace
+// operation, which will resize the data array
+template<typename T>
+void Matrix<T>::pad(int i)
+{
+  int nrows = rows + i;
+  int ncols = cols + i;
+  T * new_data = new T[nrows * ncols];
+  memset(new_data, T(0), nrows * ncols * sizeof(T));
+  
+  for (int r = 0; r < nrows; ++r)
+    {
+      for (int c = 0; c<ncols; ++c)
+	{
+	  new_data[r * ncols + c] = (r == c && c < i) ? T(1) :
+	    (r >= i && c >= i) ? data[ (r - i) * cols + (c -i)] : T(0);
+	}
+    }
+  delete [] data; data = 0;
+  rows = nrows;
+  cols = ncols;
+  size = nrows * ncols;
+  data = new_data;
+}
+
+// transform (in place) current data to subset of matrix data
+// which starts at index (r,c)
+template <typename T>
+void Matrix<T>::submatrix(int r, int c)
+{
+  assert(r < rows && c < cols);
+  int nrows = rows - r;
+  int ncols = cols - c;
+  T * new_data = new T[nrows * ncols];
+  memset(new_data, T(0), nrows * ncols * sizeof(T));
+  for (int row = 0; row < rows; ++row)
+    {
+      for (int col = 0; col < cols; ++col)
+	{
+	  if (row >= r && col >= c) new_data[(row-r) * ncols + (col-c)] = data[row * cols + col];
+	}
+    }
+  delete [] data; data = 0;
+  rows = nrows;
+  cols = ncols;
+  size = nrows * ncols;
+  data = new_data;
+}; 
 
 // matrix-vector multiplication
 // todo-parallel implementation

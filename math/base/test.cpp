@@ -73,7 +73,7 @@ int main(int argc, char ** argv)
 
 
   Matrix<float> m1(4,4); // should compute in parallel automatically
-  
+  Matrix<float> m2(4,4);
   /*
   m1.set(0,Complex_f(1,0));
   m1.set(1,Complex_f(-1,0));
@@ -90,16 +90,22 @@ int main(int argc, char ** argv)
   m1.set(4,1); m1.set(5,2); m1.set(6,0); m1.set(7,1);
   m1.set(8,-2); m1.set(9,0); m1.set(10,3); m1.set(11,-2);
   m1.set(12,2); m1.set(13,1); m1.set(14,-2); m1.set(15,-1);
+
+  m2.set(0,1); m2.set(1,-1); m2.set(2,2); m2.set(3,2);
+  m2.set(4,-1); m2.set(5,2); m2.set(6,1); m2.set(7,-1);
+  m2.set(8,2); m2.set(9,1); m2.set(10,3); m2.set(11,2);
+  m2.set(12,2); m2.set(13,-1); m2.set(14,2); m2.set(15,1);
   
   for(int r = 0; r < 4; ++r)
     {
       for (int c=0; c < 4; ++c)
 	{
-	  printf(" (%g) ", m1(r,c));//.real, m1(r,c).imag);
+	  printf(" (%g) ", m2(r,c));//.real, m1(r,c).imag);
 	}
       printf("\n");
     }  
 
+  /*
   Matrix<float> res = LinearAlgebra::hessenberg_form<float>(m1, 0);
   
   printf("\n");
@@ -108,6 +114,17 @@ int main(int argc, char ** argv)
       for (int c=0; c < 4; ++c)
 	{
 	  printf(" (%g) ", res(r,c));//, res(r,c).imag);
+	}
+      printf("\n");
+    }
+  */
+  Matrix<float> res2 = LinearAlgebra::tridiagonal_householder<float>(m2);
+  printf("\n");
+  for(int r = 0; r < 4; ++r)
+    {
+      for (int c=0; c < 4; ++c)
+	{
+	  printf(" (%g) ", res2(r,c));//, res(r,c).imag);
 	}
       printf("\n");
     }
