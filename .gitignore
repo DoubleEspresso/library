@@ -43,6 +43,7 @@
 *.idb
 *.suo
 *.log
+*.sdf
 
 #misc
 *.tar
