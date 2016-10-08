@@ -1,5 +1,5 @@
-#ifndef LIB_INTERPOLATE_H
-#define LIB_INTERPOLATE_H
+#ifndef INTEGRATE_INTERPOLATE_H
+#define INTEGRATE_INTERPOLATE_H
 
 #include <stdio.h>
 #include <string.h>

@@ -1,14 +1,12 @@
-#ifndef LIB_GAUSS_QUADRATURE
-#define LIB_GAUSS_QUADRATURE
+#ifndef INTEGRATE_GAUSS_QUADRATURE
+#define INTEGRATE_GAUSS_QUADRATURE
 
 #include "legendre.h"
 
 // 1d integrand
-typedef double (*integrand)(double,void*);
+typedef double (*integrand)(double, void*);
 
-
-// basic implementation of 1d and 2d gaussian
-// quadrature
+// basic implementation of 1d and 2d gaussian quadrature
 class GaussQuadrature
 {
   size_t N;

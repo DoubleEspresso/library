@@ -3,16 +3,6 @@
 #ifndef SYSTEM_HARDWARE_H
 #define SYSTEM_HARDWARE_H
 
-#ifdef _MSC_VER
-#include <cstdint>
-typedef __int32 int32_t;
-typedef unsigned __int32 uint32_t;
-typedef __int64 int64_t;
-typedef unsigned __int64 uint64_t;
-#else 
-#include <stdint.h>
-#endif
-
 #ifdef _WIN32
 #include <windows.h>
 #elif MACOS
@@ -21,7 +11,6 @@ typedef unsigned __int64 uint64_t;
 #else
 #include <unistd.h>
 #endif
-
 
 
 namespace Hardware
@@ -41,8 +30,7 @@ inline unsigned Hardware::cpu_count(bool &hyperthreading)
   logicalCPUS = si.dwNumberOfProcessors;
 #else
   logicalCPUS = sysconf ( _SC_NPROCESSORS_ONLN );
-#endif
-  
+
   __asm__ __volatile__("cpuid " :
 		       "=a" (registers[0]),
 		       "=b" (registers[1]),
@@ -52,10 +40,9 @@ inline unsigned Hardware::cpu_count(bool &hyperthreading)
   
   unsigned CPUfeatureSet = registers[3];
   hyperthreading = CPUfeatureSet & ( 1 << 28 );
-  
+#endif  
   if (hyperthreading) physicalCPUS = logicalCPUS / 2;
-  else physicalCPUS = logicalCPUS;
-  
+  else physicalCPUS = logicalCPUS;  
   return physicalCPUS;
 }
 

@@ -1,19 +1,20 @@
 //#pragma once
 
-#ifndef LIB_LEGENDRE_H
-#define LIB_LIEGENDRE_H
+#ifndef INTEGRATE_LEGENDRE_H
+#define INTEGRATE_LEGENDRE_H
 
 #include <math.h>
 #include <stdlib.h>
 #include <cstring>
 #include <stdio.h>
 
+#include "../base/constants.h"
+
 // *unoptimized* legendre polynomial class includes
 // generator formulae and weight/abcissa table computation
 // for gaussian quadrature
 
 #define ABS(x) ((x) < 0 ? -(x) : (x))
-#define PI 3.1415926535897932384626433832795028841971693993751
 
 template<class T>
 class Legendre

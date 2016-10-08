@@ -33,7 +33,20 @@
 *#
 .#
 
-#test files
-test
-test.cpp
-test.o
+#visual studio related
+*.filters
+*.obj
+*.exe
+*.ilk
+*.pdb
+*.tlog
+*.idb
+*.suo
+*.log
+
+#misc
+*.tar
+*.tar.gz
+
+#directories
+
