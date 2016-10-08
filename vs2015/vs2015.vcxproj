@@ -145,7 +145,7 @@
   <ItemGroup>
     <ClCompile Include="..\algorithm\union.cpp" />
     <ClCompile Include="..\math\integrate\gauss_quadrature.cpp" />
-    <ClCompile Include="exports.cpp" />
+    <ClCompile Include="..\utils\exports.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\algorithm\union.h" />
@@ -163,7 +163,6 @@
     <ClInclude Include="..\system\types.h" />
     <ClInclude Include="..\utils\bitops.h" />
     <ClInclude Include="..\utils\definitions.h" />
-    <ClInclude Include="..\utils\exports.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

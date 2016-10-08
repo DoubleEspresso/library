@@ -21,8 +21,7 @@ class GaussQuadrature
     {
       if (legendre) { delete legendre; legendre = 0; }
     }
-  bool integrate(integrand func, double xlow, double xhi, void* params, double& res, int evals);
-
+  double integrate(integrand func, double xlow, double xhi, void* params, int evals);
   // 2d error norms
   double L2norm();
 };
