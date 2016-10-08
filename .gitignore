@@ -46,6 +46,8 @@
 *.sdf
 *.opensdf
 *.exp
+*.iobj
+*.ipdb
 
 #misc
 *.tar
