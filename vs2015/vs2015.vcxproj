@@ -160,7 +160,7 @@
     <ClInclude Include="..\system\threads.h" />
     <ClInclude Include="..\system\types.h" />
     <ClInclude Include="..\utils\bitops.h" />
-    <ClInclude Include="definitions.h" />
+    <ClInclude Include="..\utils\definitions.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
