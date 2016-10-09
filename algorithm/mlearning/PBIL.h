@@ -9,29 +9,29 @@ Population based incremental learning --
 
 #include "../../system/types.h"
 
-typedef float (*cost_func)(int*, void*);
+typedef float (*residual_func)(int*, void*);
 
 class PBIL
 {
 	size_t population, num_bits;
-	float best_cost;	
+	float best_err;	
 	std::mt19937 rng; // mersenne twister
 public:
-	PBIL(size_t pop_size, size_t nb_bits, float lrate) : population(pop_size), num_bits(nb_bits), best_cost(1e10)
+	PBIL(size_t pop_size, size_t nb_bits, float lrate) : population(pop_size), num_bits(nb_bits), best_err(1e10)
 	{		
 		rng.seed(std::random_device{}());
 	}
 	~PBIL() {}
 
-	void optimize(cost_func cf, void * params, float learn_rate, float neg_learn_rate, float mutation_probabilty, float mutation_shift, uint iterations);
-	int ** create_genes(float * probabilities);
+	void optimize(residual_func cf, void * params, float learn_rate, float neg_learn_rate, float mutation_probabilty, float mutation_shift, uint iterations);
+	int ** create_samples(float * probabilities);
 	void update_probabilities(float * probabilities, int * min_gene, int * max_gene, float learn_rate, float neg_learn_rate);
 	void mutate(float * probabilities, float mutation_probabilty, float mutation_shift);
 };
 
 
 
-int ** PBIL::create_genes(float * probabilities)
+int ** PBIL::create_samples(float * probabilities)
 {
 	std::uniform_real_distribution<double> dist(0, 1);
 	int ** genes = new int*[population]; 
@@ -75,53 +75,54 @@ void PBIL::mutate(float * probabilities, float mutation_probabilty, float mutati
 	}
 }
 
-void PBIL::optimize(cost_func cf, void * params, float learn_rate, float neg_learn_rate, float mutation_probabilty, float mutation_shift, uint iterations)
+void PBIL::optimize(residual_func rf, void * params, float learn_rate, float neg_learn_rate, float mutation_probabilty, float mutation_shift, uint iterations)
 {
 	if (population <= 0) population = 512;
 	float * probabilities = new float[num_bits];	
 	for (int i = 0; i < num_bits; ++i) probabilities[i] = 0.5f;
-	int * best_gene = 0;
+	int * best_sample = 0;
 
 	for (int i = 0; i < iterations; i++)
 	{
 		// initialize population
-		int ** genes = create_genes(probabilities);
+		int ** samples = create_samples(probabilities);
 
 		// compute costs
-		float * costs = new float[population];
-		for (int j = 0; j < population; ++j) costs[j] = cf(genes[j], params);
+		float * errors = new float[population];
+		for (int j = 0; j < population; ++j) errors[j] = rf(samples[j], params);
 
 		// get max/min bounds
-		int * min_gene = 0; int * max_gene = 0; 
-		double min_cost = 1e10; double max_cost = -1e10;
+		int * min_sample = 0; int * max_sample = 0; 
+		double min_err = 1e10; double max_err = -1e10;
 		for (int j = 0; j < population; ++j)
 		{
-			float c = costs[j];
-			if (min_cost > c)
+			float e = errors[j];
+			if (min_err > e)
 			{
-				min_cost = c;
-				min_gene = genes[j];
+				min_err = e;
+				min_sample = samples[j];
 			}
-			if (max_cost < c)
+			if (max_err < e)
 			{
-				max_cost = c;
-				max_gene = genes[j];
+				max_err = e;
+				max_sample = samples[j];
 			}
 		}
 
-		if (best_cost > min_cost)
+		if (best_err > min_err)
 		{
-			best_cost = min_cost;
-			best_gene = min_gene;
+			best_err = min_err;
+			best_sample = min_sample;
 		}
 		
-		update_probabilities(probabilities, min_gene, max_gene, learn_rate, neg_learn_rate);
+		update_probabilities(probabilities, min_sample, max_sample, learn_rate, neg_learn_rate);
 		mutate(probabilities, mutation_probabilty, mutation_shift);
 
 		// free memory		
-		if (genes) { for (int j = 0; j < population; ++j) { delete[] genes[j]; genes[j] = 0; } delete [] genes; genes = 0; }
-		if (costs) { delete [] costs; costs = 0; }
+		if (samples) { for (int j = 0; j < population; ++j) { delete[] samples[j]; samples[j] = 0; } delete [] samples; samples = 0; }
+		if (errors) { delete [] errors; errors = 0; }
 	}
+	if (probabilities) { delete[] probabilities; probabilities = 0; }
 }
 
 #endif
