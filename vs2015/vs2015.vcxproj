@@ -144,12 +144,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\algorithm\mlearning\PBIL.h" />
-    <ClCompile Include="..\algorithm\union.cpp" />
+    <ClCompile Include="..\algorithm\search\union.cpp" />
     <ClCompile Include="..\math\integrate\gauss_quadrature.cpp" />
     <ClCompile Include="..\utils\exports.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\algorithm\union.h" />
+    <ClInclude Include="..\algorithm\search\union.h" />
     <ClInclude Include="..\diagnostics\stopwatch.h" />
     <ClInclude Include="..\math\base\complex.h" />
     <ClInclude Include="..\math\base\constants.h" />

@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "../system/types.h"
+#include "../../system/types.h"
 
 class UnionFindBase
 {

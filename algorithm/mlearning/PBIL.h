@@ -24,7 +24,7 @@ public:
 	~PBIL() {}
 
 	void optimize(cost_func cf, void*params, uint iterations);
-	int * load_genes(float * probabilities)
+	int * load_genes(float * probabilities);
 };
 
 int * PBIL::load_genes(float * probabilities)

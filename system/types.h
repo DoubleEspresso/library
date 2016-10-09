@@ -27,11 +27,15 @@ typedef unsigned __int64 uint64_t;
 
 typedef int8t int8;
 typedef uint8_t uint8;
+typedef const uint8_t cuint8;
 typedef int16_t int16;
+typedef const uint16_t cuint16;
 typedef uint16_t uint16;
 typedef int32_t int32;
+typedef const uint32_t cuint32;
 typedef uint32_t uint32;
 typedef int64_t int64;
+typedef const uint64_t cuint64;
 typedef uint64_t uint64;
 #endif
 #endif

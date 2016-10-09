@@ -63,8 +63,8 @@ return count;
 }
 
 
-const uint64 debruijn64 = const uint64(0x03f79d71b4cb0a89);
-const uint32 debruijn32 = const uint32(0x077CB531U);
+const uint64 debruijn64 = cuint64(0x03f79d71b4cb0a89);
+const uint32 debruijn32 = cuint32(0x077CB531U);
 
 const int idx64[64] =
 {
