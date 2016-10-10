@@ -23,12 +23,11 @@ public:
 	}
 	~PBIL() {}
 
-	void optimize(residual_func cf, void * params, float learn_rate, float neg_learn_rate, float mutation_probabilty, float mutation_shift, uint iterations);
+	float * optimize(residual_func cf, void * params, float learn_rate, float neg_learn_rate, float mutation_probabilty, float mutation_shift, uint& iterations, double tolerance);
 	void educate(int ** samples, float * probabilities);
 	void update_probabilities(float * probabilities, int * min_gene, int * max_gene, float learn_rate, float neg_learn_rate);
 	void mutate(float * probabilities, float mutation_probabilty, float mutation_shift);
 };
-
 
 
 void PBIL::educate(int ** samples, float * probabilities)
@@ -73,7 +72,7 @@ void PBIL::mutate(float * probabilities, float mutation_probabilty, float mutati
 	}
 }
 
-void PBIL::optimize(residual_func rf, void * params, float learn_rate, float neg_learn_rate, float mutation_probabilty, float mutation_shift, uint iterations)
+float * PBIL::optimize(residual_func rf, void * params, float learn_rate, float neg_learn_rate, float mutation_probabilty, float mutation_shift, uint& iterations, double tolerance)
 {
 	if (population <= 0) population = 512;
 	float * probabilities = new float[num_bits];	
@@ -88,7 +87,8 @@ void PBIL::optimize(residual_func rf, void * params, float learn_rate, float neg
 		for (int i = 0; i < num_bits; ++i) samples[k][i] = 0;
 	}
 
-	for (int i = 0; i < iterations; i++)
+	
+	while(best_err > tolerance)
 	{
 		educate(samples, probabilities);
 
@@ -122,24 +122,28 @@ void PBIL::optimize(residual_func rf, void * params, float learn_rate, float neg
 		
 		update_probabilities(probabilities, min_sample, max_sample, learn_rate, neg_learn_rate);
 		mutate(probabilities, mutation_probabilty, mutation_shift);
-		if (i % 20 == 0)
+		if (++iterations % 200 == 0)
 		{
-			printf("iter(%d) ", i);
-			for (int j = 0; j < num_bits; ++j) printf("%.3f ", probabilities[j]);
-			printf("\n");
-		}
-		if (i == iterations - 1 && best_sample != 0)
-		{
-			printf("best: ");
+			printf("iter(%d) ", iterations);
+			//for (int j = 0; j < num_bits; ++j) printf("%.3f ", probabilities[j]);
 			for (int j = 0; j < num_bits; ++j) printf("%d", best_sample[j]);
 			printf("\n");
 		}
 
 		// free memory		
 		if (errors) { delete [] errors; errors = 0; }
+	}	
+	if (best_sample != 0)
+	{
+		printf("best: ");
+		for (int j = 0; j < num_bits; ++j) printf("%.3f ", probabilities[j]);
+		printf("\n");
+		for (int j = 0; j < num_bits; ++j) printf("%d", best_sample[j]);
+		printf("\n");
+		printf("error = %.3f\n", best_err);
 	}
 	if (samples) { for (int j = 0; j < population; ++j) { delete[] samples[j]; samples[j] = 0; } delete[] samples; samples = 0; }
-	if (probabilities) { delete[] probabilities; probabilities = 0; }
+	return probabilities;
 }
 
 #endif

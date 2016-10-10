@@ -19,27 +19,21 @@ float residual_function(int * sample, void * params)
 	{
 		result |= (sample[j] << s); // bit ordering is e.g. 4 = {1,0,0}
 	}
-	int r = result - p->answer;
-	float e = (float)((float)ABS(r));// / (float)p->answer);
-	//printf("..e = %.6f\n", e);
-	return e;
+	float r = result - p->answer;
+	//printf("r=%d\n", r);
+	return ABS(r);
 }
 
 int main()
 {
 	Param p;
-	p.answer = 671265;// 3235791;
+	p.answer = 671265;
 	p.bit_length = (int) log2(p.answer)+1;
-	//printf("..bit_length = %d", p.bit_length);
-	//int * sample = new int[p.bit_length] { 1,1,0,1,1,1,1,0,1,0,1,1,0 };
-	//float err = residual_function(sample, (void*)&p);
-	//printf("...sanity check=%.3f\n", err);
 
-	PBIL * plearn = new PBIL(800, p.bit_length);
-	plearn->optimize((residual_func)&residual_function, (void*)&p, 0.7, 0.075, 0.02, 0.05, 500);
-	//residual_func rf, void * params, float learn_rate, float neg_learn_rate, float mutation_probabilty, float mutation_shift, uint iterations
-	//printf("best=");
-	//for (int j = 0; j < p.bit_length; ++j) printf("%d", best[j]);
-	//printf("\n");
+	PBIL * plearn = new PBIL(300, p.bit_length);
+	uint iterations = 0;
+	float * probabilities = plearn->optimize((residual_func)&residual_function, (void*)&p, 0.15, 0.015, 0.3, 0.05, iterations, 1e-6);
+	printf("..pbil converged in %d iterations\n", iterations);
+
 	std::cin.get(); // wait here.
 }
