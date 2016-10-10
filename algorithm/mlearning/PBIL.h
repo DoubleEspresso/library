@@ -14,16 +14,21 @@ typedef float (*residual_func)(int*, void*);
 class PBIL
 {
 	size_t population, num_bits;
-	float best_err;	
+	float best_err;	float * probabilities;
+	int * best_sample;
 	std::mt19937 rng; // mersenne twister
 public:
-	PBIL(size_t pop_size, size_t nb_bits) : population(pop_size), num_bits(nb_bits), best_err(1e10)
+	PBIL(size_t pop_size, size_t nb_bits) : population(pop_size), num_bits(nb_bits), best_err(1e10), probabilities(0), best_sample(0)
 	{		
 		rng.seed(std::random_device{}());
 	}
-	~PBIL() {}
-
-	float * optimize(residual_func cf, void * params, float learn_rate, float neg_learn_rate, float mutation_probabilty, float mutation_shift, uint& iterations, double tolerance);
+	~PBIL() 
+	{
+		if (probabilities) { delete[] probabilities; probabilities = 0; }
+		if (best_sample) { delete[] best_sample; best_sample = 0; }
+	}
+	int * best() { return best_sample; }
+	void optimize(residual_func cf, void * params, float learn_rate, float neg_learn_rate, float mutation_probabilty, float mutation_shift, uint& iterations, double tolerance);
 	void educate(int ** samples, float * probabilities);
 	void update_probabilities(float * probabilities, int * min_gene, int * max_gene, float learn_rate, float neg_learn_rate);
 	void mutate(float * probabilities, float mutation_probabilty, float mutation_shift);
@@ -72,12 +77,12 @@ void PBIL::mutate(float * probabilities, float mutation_probabilty, float mutati
 	}
 }
 
-float * PBIL::optimize(residual_func rf, void * params, float learn_rate, float neg_learn_rate, float mutation_probabilty, float mutation_shift, uint& iterations, double tolerance)
+void PBIL::optimize(residual_func rf, void * params, float learn_rate, float neg_learn_rate, float mutation_probabilty, float mutation_shift, uint& iterations, double tolerance)
 {
 	if (population <= 0) population = 512;
-	float * probabilities = new float[num_bits];	
+	probabilities = new float[num_bits];	
 	for (int i = 0; i < num_bits; ++i) probabilities[i] = 0.5f;
-	int * best_sample = 0;
+	int * best = 0;
 
 	// initialize population
 	int ** samples = new int*[population];
@@ -117,7 +122,7 @@ float * PBIL::optimize(residual_func rf, void * params, float learn_rate, float 
 		if (best_err > min_err)
 		{
 			best_err = min_err;
-			best_sample = min_sample;
+			best = min_sample;
 		}
 		
 		update_probabilities(probabilities, min_sample, max_sample, learn_rate, neg_learn_rate);
@@ -126,24 +131,26 @@ float * PBIL::optimize(residual_func rf, void * params, float learn_rate, float 
 		{
 			printf("iter(%d) ", iterations);
 			//for (int j = 0; j < num_bits; ++j) printf("%.3f ", probabilities[j]);
-			for (int j = 0; j < num_bits; ++j) printf("%d", best_sample[j]);
+			for (int j = 0; j < num_bits; ++j) printf("%d", best[j]);
 			printf("\n");
 		}
 
 		// free memory		
 		if (errors) { delete [] errors; errors = 0; }
 	}	
-	if (best_sample != 0)
+	if (best != 0)
 	{
+		best_sample = new int[num_bits];
+		memcpy(best_sample, best, num_bits * sizeof(int));
 		printf("best: ");
 		for (int j = 0; j < num_bits; ++j) printf("%.3f ", probabilities[j]);
 		printf("\n");
-		for (int j = 0; j < num_bits; ++j) printf("%d", best_sample[j]);
+		for (int j = 0; j < num_bits; ++j) printf("%d", best[j]);
 		printf("\n");
 		printf("error = %.3f\n", best_err);
 	}
 	if (samples) { for (int j = 0; j < population; ++j) { delete[] samples[j]; samples[j] = 0; } delete[] samples; samples = 0; }
-	return probabilities;
+
 }
 
 #endif
