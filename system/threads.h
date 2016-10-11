@@ -96,7 +96,7 @@ namespace
 #define thread_timed_wait(x,y,z) timed_wait(&(x),&(y),z)
 #define thread_signal(x) SetEvent(x)
 #define cond_destroy(x) CloseHandle(x)
-#define thread_create(x, f, t) CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)f, t, 0, &(x))
+#define thread_create(x, f, arg) CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)f, arg, 0, &(x))
 #define thread_sleep(x) Sleep(x)
 
 #endif
@@ -146,11 +146,12 @@ public:
 	Thread(int id) : idx(id), work_fnc(0), h(0) { };
 	Thread(int id, thread_fnc tf) : idx(id), work_fnc(tf), h(0) { };
 	Thread(int id, thread_fnc tf, void * dta) : idx(id), work_fnc(tf), data(dta), h(0) { };
-	~Thread() { if (work_fnc) { work_fnc = NULL; } };
+	~Thread() { if (work_fnc) { work_fnc = NULL; } h = 0; };
 
 	void start(void * dat) { h = thread_create(thread, work_fnc, dat); }
 	void start() { h = thread_create(thread, work_fnc, data); }
 	void join() { if (h) thread_join(&h); }
+	THREAD_HANDLE handle() { return h; }
 	int id() { return idx; }
 };
 
