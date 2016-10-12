@@ -11,25 +11,53 @@
 
 namespace LinearAlgebra
 {
+	// LU decomposition of a square matrix, follows the Doolittle algorithm
+	// outlined in wikipedia for square matrices.
+	template<typename T> void LU(const Matrix<T> &A, Matrix<T> &D);
+
 	// modified gram-schmidt orthogonalization
 	// returns a matrix whose columns are the orthonormal-ized
 	// column vectors of the input matrix
-	template<typename T> Matrix<T> gram_schmidt(const Matrix<T>& input);
+	template<typename T> Matrix<T> gram_schmidt(const Matrix<T> &input);
 
 	// qr-factorization
-	template<typename T> void QR(const Matrix<T>& input, Matrix<T>& Q, Matrix<T>& R);
+	template<typename T> void QR(const Matrix<T> &input, Matrix<T> &Q, Matrix<T> &R);
 
 	// hessenberg matrix, for symmetric matrices, this will return the householder transformation
 	// matrix, which can be used to convert symmetric matrices to tri-diagonal form
-	template<typename T> Matrix<T> hessenberg_form(const Matrix<T>& input, const int col);
+	template<typename T> Matrix<T> hessenberg_form(const Matrix<T> &input, const int col);
 
 	// given an nxn symmetric matrix A, this method reduces A to tridiagonal form using n-2
 	// orthogonal transmformations (householder method)
-	template<typename T> Matrix<T> tridiagonal_householder(const Matrix<T>& input);
+	template<typename T> Matrix<T> tridiagonal_householder(const Matrix<T> &input);
 
 	// svd, ..
 };
 
+// LU decomposition (Doolittle algorithm .. gaussian elimination) see e.g (http://www.sci.utah.edu/~wallstedt/LU.htm)
+// input: square matrix
+// output: D destination matrix, lower triangular submatrix is L, upper is U
+template<typename T>
+inline void LinearAlgebra::LU(const Matrix<T> &A, Matrix<T> &D)
+{
+	int N = A.nb_cols(); int R = A.nb_rows();
+	if (N != R) return;
+	for (int i = 0; i < N; ++i)
+	{
+		for (int j = i; j < N; ++j)
+		{
+			T sum = T(0);
+			for (int c = 0; c < i; ++c) sum += D(i, c) * D(c, j);
+			D.set(i, j, A(i, j) - sum);
+		}
+		for (int j = i + 1; j < N; ++j)
+		{
+			T sum = T(0);
+			for (int c = 0; c < i; ++c) sum += D(j, c) * D(c, i);
+			D.set(j, i, (A(j, i) - sum) / D(i, i));
+		}
+	}
+}
 
 // modified gram-schmidt orthonormalization for numerical stability
 // input: mxn matrix 

@@ -96,7 +96,8 @@ void PBIL::optimize(residual_func rf, void * params, float learn_rate, float neg
 	probabilities = new float[num_bits];	
 	for (int i = 0; i < num_bits; ++i) probabilities[i] = 0.5f;
 	int * best = 0;
-
+	Timer clock;
+	std::vector<double> times;
 	// initialize population
 	int ** samples = new int*[population];
 	for (int k = 0; k < population; ++k)
@@ -111,8 +112,10 @@ void PBIL::optimize(residual_func rf, void * params, float learn_rate, float neg
 		educate(samples, probabilities);
 
 		// compute costs
+		clock.start();
 		float * errors = new float[population];
 		for (int j = 0; j < population; ++j) errors[j] = rf(samples[j], params);
+		clock.stop();
 
 		// get max/min bounds
 		int * min_sample = 0; int * max_sample = 0; 
@@ -142,6 +145,7 @@ void PBIL::optimize(residual_func rf, void * params, float learn_rate, float neg
 		mutate(probabilities, mutation_probabilty, mutation_shift);
 		if (++iterations % 200 == 0)
 		{
+			times.push_back(clock.elapsed_ms());
 			printf("iter(%d) ", iterations);
 			for (int j = 0; j < num_bits; ++j) printf("%d", best[j]);
 			printf("\n");
@@ -160,6 +164,9 @@ void PBIL::optimize(residual_func rf, void * params, float learn_rate, float neg
 		for (int j = 0; j < num_bits; ++j) printf("%d", best[j]);
 		printf("\n");
 		printf("error = %.3f\n", best_err);
+		float avgtime = 0;
+		for (int j = 0; j < times.size(); ++j) avgtime += times[j] / times.size();
+		printf("avgerage update time = %.3fms\n", avgtime);
 	}
 	if (samples) { for (int j = 0; j < population; ++j) { delete[] samples[j]; samples[j] = 0; } delete[] samples; samples = 0; }
 
@@ -181,12 +188,11 @@ void PBIL::optimize_parallel(residual_func rf, void * params, float learn_rate, 
 		for (int i = 0; i < num_bits; ++i) samples[k][i] = 0;
 	}
 
-	std::vector<Thread*> threads;
 	std::vector<pbil_thread_data*> thread_data;
 	std::vector<double> times;
 	int remainder = population % nb_threads;
 	int batch_size = (population / nb_threads) + remainder;
-	THREAD_HANDLE * handles = new THREAD_HANDLE[nb_threads];
+	THREAD_HANDLE * threads = new THREAD_HANDLE[nb_threads];
 	int start = 0;
 
 	// thread initialization
@@ -230,14 +236,9 @@ void PBIL::optimize_parallel(residual_func rf, void * params, float learn_rate, 
 		clock.start();
 		for (int j = 0; j < nb_threads; ++j)
 		{
-			threads.push_back(new Thread(j, (thread_fnc)residual_parallel, (void*)thread_data[j]));
-			
-			threads[j]->start();
-			handles[j] = threads[j]->handle(); // handles are not created until this point..
+			threads[j] = start_thread((thread_fnc)residual_parallel, (void*)thread_data[j]);;
 		}
-		WaitForMultipleObjects(nb_threads, handles, true, INFINITE);
-		//for (int j = 0; j < nb_threads; ++j) threads[j]->join(); // not working :(
-		threads.clear();
+		wait_threads_finish(threads, nb_threads);
 		clock.stop();
 
 		// copy errors from worker threads to main thread
@@ -247,7 +248,6 @@ void PBIL::optimize_parallel(residual_func rf, void * params, float learn_rate, 
 			for (int j = start, eidx = 0; j < start + population / nb_threads; ++j, ++idx, ++eidx)
 			{
 				errors[j]= thread_data[tid]->error[eidx]; 
-				//if (errors[j] <= 0)printf("%d, %.3f\n", j, errors[j]);
 			}
 		}
 		// catch remaining errors
@@ -258,7 +258,6 @@ void PBIL::optimize_parallel(residual_func rf, void * params, float learn_rate, 
 		for (int j = 0; j < population; ++j)
 		{
 			float e = errors[j];
-			//if (errors[j] <= 0)printf("    %d, %.3f\n", j, errors[j]);
 			if (min_err > e)
 			{
 				min_err = e;
@@ -317,7 +316,6 @@ void PBIL::residual_parallel(void * params)
 		// same as error array.
 		 float ret = (*p->work_task)(p->samples[idx], p->work_params);
 		 p->error[idx] = ret;
-		 //printf("j=%d, err=%.3f\n", j, ret);
 	}
 }
 

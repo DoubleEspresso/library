@@ -59,6 +59,17 @@ typedef CRITICAL_SECTION MUTEX;
 typedef HANDLE CONDITION;
 typedef HANDLE THREAD_HANDLE;
 typedef DWORD THREAD;
+
+#define mutex_init(x)   InitializeCriticalSection(&(x));
+#define mutex_lock(x)   EnterCriticalSection(&(x))
+#define mutex_unlock(x) LeaveCriticalSection(&(x))
+#define thread_cond_init(x) create_event(x);
+#define thread_wait(x,y) cond_wait (&(x),&(y))
+#define thread_timed_wait(x,y,z) timed_wait(&(x),&(y),z)
+#define thread_signal(x) SetEvent(x)
+#define cond_destroy(x) CloseHandle(x)
+#define thread_create(x, f, arg) CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)f, arg, 0, &(x))
+#define thread_sleep(x) Sleep(x)
 typedef void*(*thread_fnc)(void*);
 
 namespace
@@ -81,23 +92,26 @@ namespace
 		WaitForMultipleObjects(1, h, FALSE, (DWORD)time_ms);
 		EnterCriticalSection(external_mutex);
 	}
-	void thread_join(HANDLE *h)
+	void wait_thread_finish(HANDLE *h)
 	{
 		WaitForSingleObject(h, INFINITE);
 		CloseHandle(h);
 	}
+	THREAD_HANDLE start_thread(thread_fnc f, void * data)
+	{
+		unsigned long threadid = 0;
+		return thread_create(threadid, f, data);
+	}
+	void wait_threads_finish(THREAD_HANDLE * handles, int nb)
+	{
+		WaitForMultipleObjects(nb, handles, true, INFINITE);
+		for (int j = 0; j < nb; ++j)
+		{
+			CloseHandle(handles[j]);
+		}
+	}
 }
 
-#define mutex_init(x)   InitializeCriticalSection(&(x));
-#define mutex_lock(x)   EnterCriticalSection(&(x))
-#define mutex_unlock(x) LeaveCriticalSection(&(x))
-#define thread_cond_init(x) create_event(x);
-#define thread_wait(x,y) cond_wait (&(x),&(y))
-#define thread_timed_wait(x,y,z) timed_wait(&(x),&(y),z)
-#define thread_signal(x) SetEvent(x)
-#define cond_destroy(x) CloseHandle(x)
-#define thread_create(x, f, arg) CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)f, arg, 0, &(x))
-#define thread_sleep(x) Sleep(x)
 
 #endif
 
@@ -131,29 +145,6 @@ public:
 	void notify_one() { thread_signal(c); }
 };
 
-
-class Thread
-{
-	size_t idx;
-	THREAD thread;
-	Mutex mutex;
-	Condition condition;
-	void * data;
-	thread_fnc work_fnc;
-	THREAD_HANDLE h;
-
-public:
-	Thread(int id) : idx(id), work_fnc(0), h(0) { };
-	Thread(int id, thread_fnc tf) : idx(id), work_fnc(tf), h(0) { };
-	Thread(int id, thread_fnc tf, void * dta) : idx(id), work_fnc(tf), data(dta), h(0) { };
-	~Thread() { if (work_fnc) { work_fnc = NULL; } h = 0; };
-
-	void start(void * dat) { h = thread_create(thread, work_fnc, dat); }
-	void start() { h = thread_create(thread, work_fnc, data); }
-	void join() { if (h) thread_join(&h); }
-	THREAD_HANDLE handle() { return h; }
-	int id() { return idx; }
-};
 
 
 #endif

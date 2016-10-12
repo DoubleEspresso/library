@@ -80,12 +80,12 @@ int main()
 
 	/*toy problem 2 : find digits representing rows/cols of MxN matrix whos rows/cols sum to answer*/
 	Param2 p2;
-	p2.answer = 94;
+	p2.answer = 194;
 	p2.rows = 4; 
 	p2.cols = 4;
 	p2.bits_per_int = ((int)log2(p2.answer) + 1);
 	p2.total_length = p2.rows * p2.cols * p2.bits_per_int; // total bits for each member of the population
-	PBIL * plearn = new PBIL(8000, p2.total_length);
+	PBIL * plearn = new PBIL(300, p2.total_length);
 	uint iterations = 0;
 	plearn->optimize((residual_func)&residual_function2, (void*)&p2, 0.15, 0.015, 0.3, 0.05, iterations, 1e-6);
 	//plearn->optimize_parallel((residual_func)&residual_function2, (void*)&p2, 0.15, 0.015, 0.3, 0.05, iterations, 4, 1e-6);

@@ -262,6 +262,8 @@ public:
 	Matrix conj();
 	void pad(int i); // inserts row/cols of identity into upper left portion of matrix (in place)
 	void submatrix(int r, int c); // in place return of matrix starting at idx (r,c)
+	void lower_triangle(Matrix& D);
+	void upper_triangle(Matrix& D);
 
 	// matrix-matrix operations
 	Matrix operator+(const Matrix& other);
@@ -281,6 +283,20 @@ public:
 	static void parallel_sub(void * data);
 
 	// matrix vector operations
+
+	// debug utilities
+	void print(std::string Label = "")
+	{
+		if (Label != "") printf(" == %s ==\n", Label.c_str());
+		for (int r = 0; r < rows; ++r)
+		{
+			for (int c = 0; c < cols; ++c)
+			{
+				printf("%.3f ", data[r*cols + c]);
+			}
+			printf("\n");
+		}
+	}
 
 private:
 	int rows;
@@ -370,6 +386,30 @@ void Matrix<T>::parallel_sub(void * data)
 }
 
 template<typename T>
+void Matrix<T>::lower_triangle(Matrix& D)
+{
+	for (int r = 0; r < rows; ++r)
+	{
+		for (int c = 0; c < r; ++c)
+		{
+			D.set(r, c, data[r * cols + c]);
+		}
+	}
+}
+
+template<typename T>
+void Matrix<T>::upper_triangle(Matrix& D)
+{
+	for (int r = 0; r < rows; ++r)
+	{
+		for (int c = r; c < cols; ++c)
+		{
+			D.set(r, c, data[r * cols + c]);
+		}
+	}
+}
+
+template<typename T>
 Matrix<T> Matrix<T>::operator*(const Matrix& other)
 {
 	assert(this->cols == other.rows);
@@ -377,8 +417,9 @@ Matrix<T> Matrix<T>::operator*(const Matrix& other)
 	Timer clock;
 	if (parallel)
 	{
-		std::vector<Thread*> threads;
-		std::vector<parallel_data<T>*> thread_data_v;
+		//std::vector<Thread*> threads;
+		THREAD_HANDLE * threads = new THREAD_HANDLE[nb_threads];
+		std::vector<parallel_data<T>*> thread_data;
 
 		int remainder = this->rows % nb_threads;
 		int size_per_thread = (this->rows / nb_threads) * other.cols;
@@ -401,26 +442,24 @@ Matrix<T> Matrix<T>::operator*(const Matrix& other)
 			//printf("..summary thread(%d)), start(%d), stop(%d), size(%d)\n",j, md->start, md->stop, md->arr_size);
 
 			start = md->stop;
-			threads.push_back(new Thread(j, (thread_fnc)parallel_multiply, (void*)md));
-			thread_data_v.push_back(md);
+			thread_data.push_back(md);
 		}
 		clock.start();
-		for (int j = 0; j < nb_threads; ++j) threads[j]->start();
-		for (int j = 0; j < nb_threads; ++j) threads[j]->join();
+		for (int j = 0; j < nb_threads; ++j) threads[j] = start_thread((thread_fnc)parallel_multiply, (void*)thread_data[j]);
+		wait_threads_finish(threads, nb_threads);
 
 		// TODO : make parallel also
 		int offset = 0;
 		for (int j = 0; j < nb_threads; ++j)
 		{
-			for (int i = 0; i < thread_data_v[j]->arr_size; ++i)
+			for (int i = 0; i < thread_data[j]->arr_size; ++i)
 			{
-				res.set(offset + i, thread_data_v[j]->thread_data[i]);
+				res.set(offset + i, thread_data[j]->thread_data[i]);
 			}
-			offset += thread_data_v[j]->arr_size;
+			offset += thread_data[j]->arr_size;
 		}
 		clock.stop();
-		clock.print("..parallel matrix multiply");
-
+		//clock.print("..parallel matrix multiply");
 	}
 	else
 	{
@@ -435,7 +474,7 @@ Matrix<T> Matrix<T>::operator*(const Matrix& other)
 			}
 		}
 		clock.stop();
-		clock.print("..serial matrix multiply");
+		//clock.print("..serial matrix multiply");
 	}
 	/*
 		int err = 0;
@@ -464,8 +503,8 @@ Matrix<T> Matrix<T>::operator+(const Matrix& other)
 	Timer clock;
 	if (parallel)
 	{
-		std::vector<Thread*> threads;
-		std::vector<parallel_data<T>*> thread_data_v;
+		THREAD_HANDLE* threads = new THREAD_HANDLE[nb_threads];
+		std::vector<parallel_data<T>*> thread_data;
 		parallel_data<T> * md = new parallel_data<T>();
 
 		int remainder = this->rows % nb_threads;
@@ -489,25 +528,24 @@ Matrix<T> Matrix<T>::operator+(const Matrix& other)
 			//printf("..summary thread(%d)), start(%d), stop(%d), size(%d)\n",j, md->start, md->stop, md->arr_size);
 
 			start = md->stop;
-			threads.push_back(new Thread(j, (thread_fnc)parallel_add, (void*)md));
-			thread_data_v.push_back(md);
+			thread_data.push_back(md);
 		}
 		clock.start();
-		for (int j = 0; j < nb_threads; ++j) threads[j]->start();
-		for (int j = 0; j < nb_threads; ++j) threads[j]->join();
+		for (int j = 0; j < nb_threads; ++j) threads[j] = start_thread((thread_fnc)parallel_add, (void*)thread_data[j]);
+		wait_threads_finish(threads, nb_threads);
 
 		// TODO : make parallel also
 		int offset = 0;
 		for (int j = 0; j < nb_threads; ++j)
 		{
-			for (int i = 0; i < thread_data_v[j]->arr_size; ++i)
+			for (int i = 0; i < thread_data[j]->arr_size; ++i)
 			{
-				res.set(offset + i, thread_data_v[j]->thread_data[i]);
+				res.set(offset + i, thread_data[j]->thread_data[i]);
 			}
-			offset += thread_data_v[j]->arr_size;
+			offset += thread_data[j]->arr_size;
 		}
 		clock.stop();
-		clock.print("..parallel matrix multiply");
+		//clock.print("..parallel matrix multiply");
 
 	}
 	else
@@ -522,7 +560,7 @@ Matrix<T> Matrix<T>::operator+(const Matrix& other)
 			}
 		}
 		clock.stop();
-		clock.print("..serial matrix multiply");
+		//clock.print("..serial matrix multiply");
 	}
 	return res;
 }
@@ -536,8 +574,8 @@ Matrix<T> Matrix<T>::operator-(const Matrix& other)
 	Timer clock;
 	if (parallel)
 	{
-		std::vector<Thread*> threads;
-		std::vector<parallel_data<T>*> thread_data_v;
+		THREAD_HANDLE *  threads = new THREAD_HANDLE[nb_threads];
+		std::vector<parallel_data<T>*> thread_data;
 		parallel_data<T> * md = new parallel_data<T>();
 
 		int remainder = this->rows % nb_threads;
@@ -561,25 +599,24 @@ Matrix<T> Matrix<T>::operator-(const Matrix& other)
 			//printf("..summary thread(%d)), start(%d), stop(%d), size(%d)\n",j, md->start, md->stop, md->arr_size);
 
 			start = md->stop;
-			threads.push_back(new Thread(j, (thread_fnc)parallel_sub, (void*)md));
-			thread_data_v.push_back(md);
+			thread_data.push_back(md);
 		}
 		clock.start();
-		for (int j = 0; j < nb_threads; ++j) threads[j]->start();
-		for (int j = 0; j < nb_threads; ++j) threads[j]->join();
+		for (int j = 0; j < nb_threads; ++j) threads[j] = start_thread((thread_fnc)parallel_sub, (void*)thread_data[j]);
+		wait_threads_finish(threads, nb_threads);
 
 		// TODO : make parallel also
 		int offset = 0;
 		for (int j = 0; j < nb_threads; ++j)
 		{
-			for (int i = 0; i < thread_data_v[j]->arr_size; ++i)
+			for (int i = 0; i < thread_data[j]->arr_size; ++i)
 			{
-				res.set(offset + i, thread_data_v[j]->thread_data[i]);
+				res.set(offset + i, thread_data[j]->thread_data[i]);
 			}
-			offset += thread_data_v[j]->arr_size;
+			offset += thread_data[j]->arr_size;
 		}
 		clock.stop();
-		clock.print("..parallel matrix multiply");
+		//clock.print("..parallel matrix multiply");
 
 	}
 	else
@@ -594,7 +631,7 @@ Matrix<T> Matrix<T>::operator-(const Matrix& other)
 			}
 		}
 		clock.stop();
-		clock.print("..serial matrix multiply");
+		//clock.print("..serial matrix subtract");
 	}
 	return res;
 }
