@@ -50,12 +50,20 @@ public:
 		rows = other.rows;
 		size = rows;
 		data = new T[size];
-		memcpy(this->data, other.data, sizeof(T) * size);
+		memcpy(this->data, other.get_data(), sizeof(T) * size);
 	}
 	~Vector() { if (data) { delete[] data; data = 0; } }
-
+	T * get_data() const { return data; }
 	T operator()(int r) const { return data[r]; }
-	void operator=(const Vector& other) { memcpy(this->data, other.data, sizeof(T) * size); }
+	Vector<T>& operator=(const Vector& other) 
+	{
+		if (data) { delete[] data; data = 0; }
+		memcpy(this->data, other.get_data(), sizeof(T) * size);  
+		rows = other.nb_rows();
+		cols = other.nb_cols();
+		size = rows * cols;
+		return *this;
+	}
 	void set(int j, T val) { data[j] = T(val); }
 	int nb_rows() const { return rows; }
 	int nb_cols() const { return rows; }
@@ -232,7 +240,7 @@ public:
 		cols = other.cols;
 		size = rows * cols;
 		data = new T[size];
-		memcpy(this->data, other.data, sizeof(T) * size);
+		memcpy(this->data, other.get_data(), sizeof(T) * size);
 	}
 
 	~Matrix() 
@@ -248,7 +256,7 @@ public:
 
 	T operator()(int r, int c) const { return data[r*cols + c]; }
 
-	void operator=(const Matrix& other) 
+	Matrix<T>& operator=(const Matrix& other) 
 	{
 		if (rows != other.nb_rows() || cols != other.nb_cols())
 		{
@@ -259,6 +267,7 @@ public:
 		rows = other.nb_rows();
 		cols = other.nb_cols();
 		size = rows * cols;
+		return *this;
 	}
 	void free()
 	{
@@ -285,7 +294,10 @@ public:
 	{
 		free();
 		this->data = new T[other.Size()];
-		memcpy(this->data, other.data, sizeof(T) * size);
+		memcpy(this->data, other.get_data(), sizeof(T) * size);
+		rows = other.nb_rows();
+		cols = other.nb_cols();
+		size = rows * cols;
 	}
 	int nb_rows() const { return rows; }
 	int nb_cols() const { return cols; }
