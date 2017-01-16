@@ -197,7 +197,7 @@ template<typename T>
 class Matrix
 {
 public:
-	Matrix() {};
+	//Matrix() {};
 	Matrix(const Vector<T>& other)
 	{
 		size = other.nb_rows();
@@ -235,15 +235,30 @@ public:
 		memcpy(this->data, other.data, sizeof(T) * size);
 	}
 
-	~Matrix() { if (data) { delete[] data; data = 0; } }
+	~Matrix() 
+	{ 
+		if (data) 
+		{ 
+			size_t s = size;
+
+			delete[] data; 
+			data = 0; 
+		} 
+	}
 
 	T operator()(int r, int c) const { return data[r*cols + c]; }
 
 	void operator=(const Matrix& other) 
 	{
-		free();
-		this->data = new T[other.Size()];
-		memcpy(this->data, other.data, sizeof(T) * size); 
+		if (rows != other.nb_rows() || cols != other.nb_cols())
+		{
+			free();
+			data = new T[other.Size()];
+		}
+		memcpy(data, other.get_data(), sizeof(T) * other.Size());
+		rows = other.nb_rows();
+		cols = other.nb_cols();
+		size = rows * cols;
 	}
 	void free()
 	{
@@ -288,7 +303,7 @@ public:
 	void shuffle_cols(Matrix& storage);
 	void pad(int i); // inserts row/cols of identity into upper left portion of matrix (in place)
 	void submatrix(int r, int c); // in place return of matrix starting at idx (r,c)
-	size_t Size() const { return size; }
+	size_t Size() const { return rows*cols; }
 
 	// matrix-matrix operations
 	Matrix operator+(const Matrix& other);

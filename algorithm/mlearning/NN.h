@@ -41,7 +41,7 @@ public:
 		}
 		else if (output_layer)
 		{
-			_W = new Matrix<float>(1, c);
+			_W = new Matrix<float>(r, 1);
 			_a = new Matrix<float>(1, 1);
 		}
 		else
@@ -131,7 +131,7 @@ public:
 		{
 			for (int j = 0; j < _d->nb_rows(); ++j)
 			{
-				_d->set(j, 1, dy->data_at(j, 0) * ds.data_at(j, 0));
+				_d->set(j, 0, dy->data_at(j, 0) * ds.data_at(j, 0));
 			}
 		}
 		else // layer L delta is computed from layer L+1 delta, and layer L W_ij
@@ -141,7 +141,7 @@ public:
 			Matrix<float> v = _W->transpose() * (*l->d()); // W_{L+1, L}_T * d_{L+1,1}
 			for (int j = 0; j < _d->nb_rows(); ++j)
 			{
-				_d->set(j, 1, v.data_at(j, 0) * ds.data_at(j, 0));
+				_d->set(j, 0, v.data_at(j, 0) * ds.data_at(j, 0));
 			}
 		}
 	}
@@ -320,7 +320,7 @@ public:
 			}
 		
 			// 7. gradient descent update of the weights/biases using stored dW & dB arrays
-			for (int j = 0; j < _links; ++j)
+			for (int j = 1; j < _links; ++j)
 			{
 				_L[j]->update_params(lrate, 1.0f / dW.size() * dW[j], 1.0f / dB.size() * dB[j]);
 			}

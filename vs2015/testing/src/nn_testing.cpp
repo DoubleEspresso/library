@@ -46,12 +46,12 @@ int main(int argc, char * argv[])
 	}
 	/*network params*/
 	float lrate = 0.1; // learning rate
-	size_t sample_size = 5; // batch size for sgd 
+	size_t sample_size = 2; // batch size for sgd 
 	size_t tepochs = 4; // nb of training epochs
 
 	int * nn_dims = new int[3];
 	nn_dims[0] = training_data->nb_rows();
-	nn_dims[1] = 50;
+	nn_dims[1] = 4;
 	nn_dims[2] = 1;
 
 	Network * net = new Network(training_data, 1, nn_dims, 2);
@@ -62,6 +62,7 @@ int main(int argc, char * argv[])
 		return -1;
 	}
 	printf("..NN finished training OK\n");
+	std::cin.get();
 	return 0;
 }
 
