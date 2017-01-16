@@ -4,21 +4,21 @@
 #include "../system/types.h"
 
 // SWAR popcount algorithm for U64 datatypes
-inline int count64(uint64 b)
+inline int count64(uint64 _b)
 {
-	if (!b) return 0;
-	b = b - ((b >> 1) & 0x5555555555555555ULL);
-	b = (b & 0x3333333333333333ULL) + ((b >> 2) & 0x3333333333333333ULL);
-	b = (b + (b >> 4)) & 0x0f0f0f0f0f0f0f0fULL;
-	return (int)((b * 0x0101010101010101ULL) >> 56);
+	if (!_b) return 0;
+	_b = _b - ((_b >> 1) & 0x5555555555555555ULL);
+	_b = (_b & 0x3333333333333333ULL) + ((_b >> 2) & 0x3333333333333333ULL);
+	_b = (_b + (_b >> 4)) & 0x0f0f0f0f0f0f0f0fULL;
+	return (int)((_b * 0x0101010101010101ULL) >> 56);
 }
 
 // SWAR popcount algorithm for U32 datatypes
-inline int count32(uint64 b)
+inline int count32(uint64 _b)
 {
-	if (!b) return 0;
-	uint32 bl = uint32(b ^ (b << 32)); // lower 32 bits
-	uint32 bu = uint32(b ^ (b >> 32)); // upper 32 bits
+	if (!_b) return 0;
+	uint32 bl = uint32(_b ^ (_b << 32)); // lower 32 bits
+	uint32 bu = uint32(_b ^ (_b >> 32)); // upper 32 bits
 
 	int low_count = 0;
 	int high_count = 0;
@@ -39,26 +39,26 @@ inline int count32(uint64 b)
 }
 
 
-inline int count(uint64 b)
+inline int count(uint64 _b)
 {
-	return (_64BIT ? count64(b) : count32(b));
+	return (_64BIT ? count64(_b) : count32(_b));
 }
 
 // use when most bits in "b" are 0.
 
-int count64_max15(uint64 b)
+int count64_max15(uint64 _b)
 {
 int count;
-for (count = 0; b; count++)
-b &= b - 1;
+for (count = 0; _b; count++)
+_b &= _b - 1;
 return count;
 }
 
-int count32_max15(uint32 b)
+int count32_max15(uint32 _b)
 {
 int count;
-for (count = 0; b; count++)
-b &= b - 1;
+for (count = 0; _b; count++)
+_b &= _b - 1;
 return count;
 }
 
@@ -88,16 +88,16 @@ const int idx32[64] =
 };
 
 // returns the LSB of the bitmap using lookup tables
-inline int lsb64(uint64 b)
+inline int lsb64(uint64 _b)
 {
-	return idx64[(int)(((b & (~b + 1ULL)) * debruijn64) >> 58)];
+	return idx64[(int)(((_b & (~_b + 1ULL)) * debruijn64) >> 58)];
 }
 
 // lsb for 32-bit systems (overly slow ?).
-inline int lsb32(uint64 b)
+inline int lsb32(uint64 _b)
 {
-	uint32 bl = uint32(b ^ (b << 32)); // lower 32 bits
-	uint32 bu = uint32(b ^ (b >> 32)); // upper 32 bits
+	uint32 bl = uint32(_b ^ (_b << 32)); // lower 32 bits
+	uint32 bu = uint32(_b ^ (_b >> 32)); // upper 32 bits
 
 	uint32 bn = (bl ? bl : bu);
 	int idx = (bl ? 0 : 32);
@@ -105,15 +105,15 @@ inline int lsb32(uint64 b)
 	return idx32[(int)((((bn & (~bn + 1ULL)) * debruijn32) >> 27) + idx)];
 }
 
-inline int lsb(uint64 b)
+inline int lsb(uint64 _b)
 {
-	return (_64BIT ? lsb64(b) : lsb32(b));
+	return (_64BIT ? lsb64(_b) : lsb32(_b));
 };
 
-inline int pop_lsb(uint64& b)
+inline int pop_lsb(uint64& _b)
 {
-	const int s = (_64BIT ? lsb64(b) : lsb32(b));
-	b &= (b - 1);
+	const int s = (_64BIT ? lsb64(_b) : lsb32(_b));
+	_b &= (_b - 1);
 	return s;
 };
 

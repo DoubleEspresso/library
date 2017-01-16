@@ -7,10 +7,15 @@
 #include <string.h>
 #include <vector>
 #include <math.h>
+#include <algorithm>    
+#include <array>        
+#include <random>       
+#include <chrono>       
 
 #include "../../system/threads.h"
 #include "../../utils/timer.h"
 #include "../../system/hardware.h"
+#include "../../utils/array_utils.h"
 
 template <typename T> class Matrix;
 
@@ -22,7 +27,7 @@ public:
 	{
 		data = new T[size];
 		memset(data, 0, sizeof(T)*size);
-		parallel = (rows >= 275);
+		parallel = false;// (rows >= 275);
 		if (parallel)
 		{
 			bool hyperthreading = false;
@@ -200,7 +205,7 @@ public:
 		rows = other.nb_rows();
 		data = new T[size];
 		memset(data, 0, sizeof(T)*size);
-		parallel = (size >= 275);
+		parallel = false;// (size >= 275);
 		if (parallel)
 		{
 			bool hyperthreading = false;
@@ -234,36 +239,56 @@ public:
 
 	T operator()(int r, int c) const { return data[r*cols + c]; }
 
-	void operator=(const Matrix& other) { memcpy(this->data, other.data, sizeof(T) * size); }
-
-	T data_at(int j) { return T(data[j]); }
-	void set(int r, int c, T val) { data[r*cols + c] = T(val); }
-	void set(int j, T val) { data[j] = val; }
-	T trace();
-	void scan() { parallel = (size >= 275 * 275); } // for example
-	Matrix zeros();
+	void operator=(const Matrix& other) 
+	{
+		free();
+		this->data = new T[other.Size()];
+		memcpy(this->data, other.data, sizeof(T) * size); 
+	}
+	void free()
+	{
+		if (data) { delete[] data; data = 0; }
+	}
+	void scan() { parallel = false; } // (size >= 275 * 275); } // for example
 	void clear() { if (data) memset(data, 0, sizeof(T) * size); }
 	Matrix identity();
 	bool is_square() { return rows == cols; }
-	int nb_rows() const { return rows; }
-	int nb_cols() const { return cols; }
-	bool resize();
-	Matrix inverse();
-	T * diag();
-	T * eigenvals();
-	T * eigenvecs();
-	T * get_data() const { return data; }
 	void set_threads(int j) { nb_threads = j; }
 	int get_threads() { return nb_threads; }
 	Matrix minor(int r, int c);
-	Vector<T> column(int c) const;
-	void set_column(int c, const Vector<T>& vin) const;
 	Matrix transpose();
 	Matrix conj();
-	void pad(int i); // inserts row/cols of identity into upper left portion of matrix (in place)
-	void submatrix(int r, int c); // in place return of matrix starting at idx (r,c)
 	void lower_triangle(Matrix& D);
 	void upper_triangle(Matrix& D);
+
+	// access
+	T data_at(int j) { return T(data[j]); }
+	T data_at(int r, int c) { return T(data[r * cols + c]); }
+	void set(int r, int c, T val) { data[r*cols + c] = T(val); }
+	void set(int j, T val) { data[j] = val; }
+	void set(const Matrix<T>& other)
+	{
+		free();
+		this->data = new T[other.Size()];
+		memcpy(this->data, other.data, sizeof(T) * size);
+	}
+	int nb_rows() const { return rows; }
+	int nb_cols() const { return cols; }
+	T * get_data() const { return data; }
+
+	// utility
+	Vector<T> get_col(int c) const;
+	Matrix<T> * get_cols(int r, int n) const;
+	Vector<T> get_row(int r) const;
+	Matrix<T> * get_rows(int r, int n) const;
+	void set_col(int c, const Vector<T>& vin) const;
+	void set_row(int r, const Vector<T>& rin) const;
+	//void reshape(int r, int c) const;
+	void shuffle_rows(Matrix& storage);
+	void shuffle_cols(Matrix& storage);
+	void pad(int i); // inserts row/cols of identity into upper left portion of matrix (in place)
+	void submatrix(int r, int c); // in place return of matrix starting at idx (r,c)
+	size_t Size() const { return size; }
 
 	// matrix-matrix operations
 	Matrix operator+(const Matrix& other);
@@ -273,6 +298,7 @@ public:
 	Matrix operator-=(const Matrix& other);
 	Matrix operator*=(const Matrix& other);
 	Matrix operator*(const T& other) const;
+	//Matrix operator*(const T& other, const Matrix<T>& m) const;
 
 	// matrix-vector operations
 	Vector<T> operator*(const Vector<T>& other);
@@ -281,8 +307,6 @@ public:
 	static void parallel_multiply(void * data);
 	static void parallel_add(void * data);
 	static void parallel_sub(void * data);
-
-	// matrix vector operations
 
 	// debug utilities
 	void print(std::string Label = "")
@@ -415,7 +439,7 @@ Matrix<T> Matrix<T>::operator*(const Matrix& other)
 	assert(this->cols == other.rows);
 	Matrix res(this->rows, other.cols);
 	Timer clock;
-	if (parallel)
+	if (false)
 	{
 		//std::vector<Thread*> threads;
 		THREAD_HANDLE * threads = new THREAD_HANDLE[nb_threads];
@@ -501,7 +525,7 @@ Matrix<T> Matrix<T>::operator+(const Matrix& other)
 	assert(this->cols == other.cols && this->rows == other.rows);
 	Matrix res(this->rows, this->cols);
 	Timer clock;
-	if (parallel)
+	if (false)//(parallel)
 	{
 		THREAD_HANDLE* threads = new THREAD_HANDLE[nb_threads];
 		std::vector<parallel_data<T>*> thread_data;
@@ -659,7 +683,26 @@ Matrix<T> Matrix<T>::minor(int r, int c)
 }
 
 template<typename T>
-Vector<T> Matrix<T>::column(int c) const
+Vector<T> Matrix<T>::get_row(int r) const
+{
+	assert(r <= rows);
+	Vector<T> res(cols);
+	for (int c = 0; c < cols; ++c) res.set(c, (*this)(r, c));
+	return res;
+}
+
+// returns n x cols submatrix of n-rows, starting at row-index r.
+template<typename T>
+Matrix<T> * Matrix<T>::get_rows(int r, int n) const
+{
+	assert(r <= rows);
+	Matrix<T> * res = new Matrix<T>(n, cols);
+	for (int s = r, i = 0; s < r + n; ++s, ++i) res->set_row(i, get_row(s));
+	return res;
+}
+
+template<typename T>
+Vector<T> Matrix<T>::get_col(int c) const
 {
 	assert(c <= cols);
 	Vector<T> res(rows);
@@ -667,12 +710,30 @@ Vector<T> Matrix<T>::column(int c) const
 	return res;
 }
 
+// returns n x cols submatrix of n-rows, starting at row-index r.
 template<typename T>
-void Matrix<T>::set_column(int c, const Vector<T>& vin) const
+Matrix<T> * Matrix<T>::get_cols(int c, int n) const
+{
+	assert(c <= cols);
+	Matrix<T> * res = new Matrix<T>(rows, n);
+	for (int s = c, i = 0; s < c + n; ++c, ++i) res->set_col(i, get_col(s));
+	return res;
+}
+
+template<typename T>
+void Matrix<T>::set_col(int c, const Vector<T>& vin) const
 {
 	assert(vin.nb_rows() == rows && c <= cols);
 	for (int r = 0; r < rows; ++r)
 		data[r*cols + c] = vin(r);
+}
+
+template<typename T>
+void Matrix<T>::set_row(int r, const Vector<T>& rin) const
+{
+	assert(rin.nb_cols() == cols && r <= rows);
+	for (int c = 0; c < cols; ++c)
+		data[r * cols + c] = rin(r);
 }
 
 template<typename T>
@@ -719,8 +780,8 @@ Matrix<T> Matrix<T>::operator*(const T& other) const
 	return res;
 }
 
-template<typename T, typename T2>
-inline Matrix<T> operator*(const T2& other, const Matrix<T>& m)
+//template<typename T>
+Matrix<float> operator*(const float& other, const Matrix<float>& m)
 {
 	return m * other;
 }
@@ -751,8 +812,30 @@ void Matrix<T>::pad(int i)
 	data = new_data;
 }
 
+template <typename T>
+void Matrix<T>::shuffle_cols(Matrix<T>& storage)
+{
+	int * indices = new int[cols];
+	for (int j = 0; j < cols; ++j) indices[j] = j;
+
+	shuffle<int>(indices, cols);
+
+	for (int j = 0; j < cols; ++j) storage.set_col(indices[j], get_col(j));
+}
+
+template <typename T>
+void Matrix<T>::shuffle_rows(Matrix<T>& storage)
+{
+	int * indices = new int[rows];
+	for (int j = 0; j < rows; ++j) indices[j] = j;
+
+	shuffle<int>(indices, rows);
+
+	for (int j = 0; j < rows; ++j) storage.set_row(indices[j], get_row(j));
+}
+
 // transform (in place) current data to subset of matrix data
-// which starts at index (r,c)
+// which starts at index (r,c) .. deprecated (do not use)
 template <typename T>
 void Matrix<T>::submatrix(int r, int c)
 {

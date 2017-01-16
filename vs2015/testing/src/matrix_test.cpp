@@ -9,6 +9,7 @@
 int main()
 {
 	/*Test LU decomposition*/
+	Hardware::gpu_query();
 	int nb_passed = 0; int tests = 500;
 	for (int j = 2; j < tests; ++j)
 	{
