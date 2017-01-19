@@ -168,8 +168,10 @@
     <ClInclude Include="..\system\hardware.h" />
     <ClInclude Include="..\system\threads.h" />
     <ClInclude Include="..\system\types.h" />
+    <ClInclude Include="..\utils\array_utils.h" />
     <ClInclude Include="..\utils\bitops.h" />
     <ClInclude Include="..\utils\definitions.h" />
+    <ClInclude Include="..\utils\timer.h" />
     <ClInclude Include="cuda_utilities.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

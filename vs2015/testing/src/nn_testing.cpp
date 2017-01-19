@@ -54,7 +54,8 @@ int main(int argc, char * argv[])
 	nn_dims[1] = 4;
 	nn_dims[2] = 1;
 
-	Network * net = new Network(training_data, 1, nn_dims, 2);
+	//Network(Matrix<float> * indata, size_t hidden_layers, int * layer_dims, size_t num_layers, size_t n_runs)
+	Network * net = new Network(training_data, 1, nn_dims, 3, 2);
 	net->init_funcs((net_func)&_sig, (net_func)&_dsig, (net_func)&_cost, (net_func)&_dcost);
 	if (!net->sgd(training_data, lrate, sample_size, tepochs))
 	{
