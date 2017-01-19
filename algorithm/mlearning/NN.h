@@ -409,9 +409,16 @@ public:
 			}
 
 			// 8. trace progress
-			printf("..finished training epoch %d/%d\n", sample, samples);
+			if (sample%100==0) printf("..finished training epoch %d/%d\n", sample, samples);
 		
 		}
+
+		// 9. dbg - readout final network bias/weight params 
+		for (int j = 0; j < _links; ++j)
+		{
+			_L[j]->trace();
+		}
+
 		return true;
 	}
 };

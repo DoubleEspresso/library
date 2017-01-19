@@ -338,7 +338,7 @@ public:
 	// debug utilities
 	void print(std::string Label = "")
 	{
-		if (Label != "") printf(" == %s ==\n", Label.c_str());
+		if (Label != "") printf(" == %s (%dx%d) ==\n", Label.c_str(), rows, cols);
 		for (int r = 0; r < rows; ++r)
 		{
 			for (int c = 0; c < cols; ++c)
@@ -760,7 +760,7 @@ void Matrix<T>::set_row(int r, const Vector<T>& rin) const
 {
 	assert(rin.nb_cols() == cols && r <= rows);
 	for (int c = 0; c < cols; ++c)
-		data[r * cols + c] = rin(r);
+		data[r * cols + c] = rin(c);
 }
 
 template<typename T>

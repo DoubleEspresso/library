@@ -35,23 +35,30 @@ int main(int argc, char * argv[])
 
 
 	/*load data here*/
-	int training_size = 50;
-	Matrix<float> * training_data = new Matrix<float>(50, 2);
+	int training_size = 250;
+	Matrix<float> * training_data = new Matrix<float>(training_size, 2);
 
 	for (int j = 0; j < training_size; ++j)
 	{
-		float x = j; float y = sin(x * x) + dist(_rng);
+		float x = j; float y = x + dist(_rng) / 10.0;
 		training_data->set(j, 0, x);
 		training_data->set(j, 1, y);
 	}
+
+	/*dbg print of input data*/
+	//for (int j = 0; j < training_size; ++j)
+	//{
+	//	printf(" %d %.3f\n", j, training_data->data_at(j, 1));
+	//}
+
 	/*network params*/
-	float lrate = 0.1; // learning rate
-	size_t sample_size = 2; // batch size for sgd 
-	size_t tepochs = 4; // nb of training epochs
+	float lrate = 0.2; // learning rate
+	size_t sample_size = 25; // batch size for sgd 
+	size_t tepochs = 4000; // nb of training epochs
 
 	int * nn_dims = new int[3];
 	nn_dims[0] = training_data->nb_rows();
-	nn_dims[1] = 4;
+	nn_dims[1] = 2;
 	nn_dims[2] = 1;
 
 	//Network(Matrix<float> * indata, size_t hidden_layers, int * layer_dims, size_t num_layers, size_t n_runs)
@@ -63,6 +70,9 @@ int main(int argc, char * argv[])
 		return -1;
 	}
 	printf("..NN finished training OK\n");
+
+	// test trained network
+
 	std::cin.get();
 	return 0;
 }
