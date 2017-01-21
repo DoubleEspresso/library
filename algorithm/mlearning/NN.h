@@ -40,13 +40,13 @@ public:
 	}
 	bool init(std::mt19937& rng)
 	{
-		std::uniform_real_distribution<double> dist(0, 1);
+		std::uniform_real_distribution<double> dist(-0.5, 0.5);
 		for (int r = 0; r < _W->nb_rows(); ++r)
 		{
 			for (int c = 0; c < _W->nb_cols(); ++c)
 			{
 				_W->set(r, c, (float)dist(rng));
-				if (r == 0) _b->set(0, c, (float)dist(rng));
+				if (c == 0) _b->set(r, c, (float)dist(rng));
 			}
 		}
 		return true;
@@ -60,11 +60,11 @@ public:
 	Matrix<float> * b() { return _b; }
 	// note : in stochastic gradient descent, we average over the batch of gradients
 	// to update (fixing L), these inputs are given by dW = 1/m*sum_m (dC/dW) etc.
-	void update_params(float rate, const Matrix<float>& dW, const Matrix<float>& dB)
+	void update_params(const Matrix<float>& dW, const Matrix<float>& dB)
 	{
 		// occasionally fails .. (different sizes in - operator).
-		(*_W) = (*_W) - rate * dW; // gradient descent for weights
-		(*_b) = (*_b) - rate * dB; // gradient descent for biases
+		(*_W) = (*_W) - dW; // gradient descent for weights
+		(*_b) = (*_b) - dB; // gradient descent for biases
 	}
 };
 
@@ -97,7 +97,12 @@ public:
 	Matrix<float> * d() { return _d; }
 	Matrix<float> * z() { return _z; }
 	size_t dim() { return _size; }
-
+	void clear()
+	{
+		_z->clear();
+		_a->clear();
+		_d->clear();
+	}
 	void compute_activations(net_func _f)
 	{
 		assert(_f != 0 && _z != 0);
@@ -111,12 +116,10 @@ public:
 	void compute_zvals(Matrix<float> * a, Link * l)
 	{
 		assert(l != 0);
-		int wcol = l->W()->nb_cols(); // last transfer matrix w_rc * n_c = 1x1!
-		int arow = a->nb_rows();
 		assert(l->W()->nb_cols() == a->nb_rows());
 		assert(l->b()->nb_rows() == l->W()->nb_rows());
 		assert(_z->nb_rows() == l->W()->nb_rows() && _z->nb_cols() == 1);
-		_z->set((*l->W()) * (*a) + (*l->b()));
+		(*_z) = (*l->W()) * (*a) + (*l->b());
 	}
 
 	// note: these are hidden layer deltas only, the input/output layer data
@@ -130,7 +133,7 @@ public:
 
 		//assert(ds->nb_rows() == dsig->nb_rows());
 		Matrix<float> wd(l->W()->nb_cols(), 1);
-		wd.set(l->W()->transpose() * (*ds));
+		wd = l->W()->transpose() * (*ds);
 
 		// set the delta-vector by multiply previous result by dsigma
 		for (int r = 0; r < dsig->nb_rows(); ++r)
@@ -149,7 +152,6 @@ class Network // to be made a base class in the future ?
 	// means if there are N-hidden layers, there are N+1-link layers
 	size_t _links; // number of hidden layers
 	int * _dims; // dimensions for each layer (including in/output layers)
-	size_t _runs; // number of training iterations
 	net_func _sig; // activation function for the network
 	net_func _dsig; // derivative of sigmoid
 	net_func _cost; // error function for the network
@@ -157,13 +159,13 @@ class Network // to be made a base class in the future ?
 	bool _valid; // status variable of network
 	std::mt19937 _rng; // mersenne twister
 public:
-	Network() : _data(0), _L(0), _links(0), _dims(0), _runs(0),
+	Network() : _data(0), _L(0), _links(0), _dims(0),
 		_sig(0), _dsig(0), _cost(0), _dcost(0), _valid(false)
 	{
 		_rng.seed(std::random_device{}());
 	}
-	Network(Matrix<float> * indata, size_t hidden_layers, int * layer_dims, size_t num_layers, size_t n_runs)
-		: _data(indata), _L(0), _links(hidden_layers + 1), _dims(layer_dims), _runs(n_runs),
+	Network(Matrix<float> * indata, size_t hidden_layers, int * layer_dims, size_t num_layers)
+		: _data(indata), _L(0), _links(hidden_layers + 1), _dims(layer_dims),
 		_sig(0), _dsig(0), _cost(0), _dcost(0), _valid(false)
 	{
 		if (num_layers != hidden_layers + 2)
@@ -262,7 +264,7 @@ public:
 			return;
 		}
 		Nodes * prev_nodes = _nodes[idx - 1];
-		curr_nodes->compute_zvals(prev_nodes->a(), _L[idx - 1]);
+		curr_nodes->compute_zvals(prev_nodes->a(), _L[idx]);
 		curr_nodes->compute_activations(*_sig);
 	}
 
@@ -278,7 +280,8 @@ public:
 			{
 				float v = output->z()->data_at(r, 0); // assumed to be columnwise-data
 				// note : this udpates the output-deltas by references (we need to store those)
-				output->d()->set(r, 0, (float)(_dsig((void*)&v) * dcost->data_at(r, 0)));
+				float tmp = (float)(_dsig((void*)&v) * dcost->data_at(r, 0));
+				output->d()->set(r, 0, tmp);
 			}
 			return;
 		}
@@ -304,8 +307,6 @@ public:
 		assert((int)output->dim() == xin->nb_rows()); // these dimensions should match! (x,y) tuples for data is assumed!
 		{
 			// output layer here ...
-			int dlink = _links - 1;
-			int dnode = _links - 2;
 			output->compute_zvals(_nodes[_links - 2]->a(), _L[_links - 1]);
 			output->compute_activations(*_sig);
 		}
@@ -375,37 +376,46 @@ public:
 				Nodes * output = forward_pass(&singleton); // note: singleton is updated by reference
 
 				// 4. load cost-vector for backward pass
-				Matrix<float> * y = output->z();
+				Matrix<float> * y = output->a();
 				assert(y->nb_rows() == dcosts->nb_rows());
-				for (int r = 0; r < dcosts->nb_rows(); ++r)
-				{
-					float v = y->data_at(r, 0) - batch->data_at(r, 1); // todo : _dcost should accept (y_i, t_i) as input + void-params, and return a floating point result 
-					dcosts->set(r, 0, (*_dcost)((void*)&v));
-				}
-
+				float v = y->data_at(0, 0) - batch->data_at(i, 1);
+				// float tmp = (float)_dcost((void*)&v); returning 0 always !?
+				dcosts->set(0, v);
+				//dcosts->print("..dcost value first pass..");
 				// 5. backward pass with dcost vector - will store all delta params at each layer of the network 
 				// to be used for gradient descent update of weights and biases for each layer of the network.
 				backward_pass(output, dcosts); 
 
 				// 6. store the computed delta's for each batch (the deltas are overwritten for each training epoch)
+				// for each link-layer, adjust the stored weights with current values of deltas and activations
 				for (int j = 0; j < _links; ++j)
 				{
 					Nodes * n = (j == _links - 1 ? output : _nodes[j]);
 					if (j == 0)
 					{
-						// use singleton as activation, note : nodes[j=0] is the first layer of hidden nodes!
-						dW.push_back((*n->d()) * singleton.transpose());
+						if (i == 0) dW.push_back((*n->d()) * singleton.transpose());
+						// note : singleton = activation (by ref)
+						// note : nodes[j=0] is the first layer of hidden nodes!
+						else dW[j] = dW[j] + ((*n->d()) * singleton.transpose());
 					}
-					else dW.push_back((*n->d()) * _nodes[j - 1]->a()->transpose());
-					
-					dB.push_back(*n->d());
+					else
+					{
+						if (i == 0) dW.push_back((*n->d()) * _nodes[j - 1]->a()->transpose());
+						else dW[j] = dW[j] + ((*n->d()) * _nodes[j - 1]->a()->transpose());
+					}
+					if (i == 0) dB.push_back((*n->d()));
+					else dB[j] = dB[j] + (*n->d());
 				}
+
+				for (int j = 0; j < _links - 1; ++j) _nodes[j]->clear();
 			}
 		
 			// 7. gradient descent update of the weights/biases using stored dW & dB arrays
-			for (int j = 1; j < _links; ++j)
+
+			float scale = lrate / batch->nb_rows();
+			for (int j = 0; j < _links; ++j)
 			{
-				_L[j]->update_params(lrate, 1.0f / dW.size() * dW[j], 1.0f / dB.size() * dB[j]);
+				_L[j]->update_params(scale * dW[j] , scale * dB[j]);
 			}
 
 			// 8. trace progress
@@ -420,6 +430,43 @@ public:
 		}
 
 		return true;
+	}
+
+	void verify(Matrix<float> * testdata, net_func _f)
+	{
+		printf("..validation\n");
+		float rms = 0.0f;
+		for (int r = 0; r < testdata->nb_rows(); ++r)
+		{
+			Matrix<float> S(1, 1);
+			S.clear();
+			S.set(0, 0, testdata->data_at(r, 0));
+			// forward pass on input data
+			for (int j = 0; j < _links; ++j)
+			{
+				Matrix<float> * wij = _L[j]->W(); Matrix<float> * bi = _L[j]->b();
+				
+				S = (*wij) * S + (*bi);
+
+				Matrix<float> T(S);
+				//if (j != _links - 1)
+				{
+					for (int i = 0; i < S.nb_rows(); ++i)
+					{
+						float sval = S.data_at(i, 0);
+						T.set(i, 0, _sig((void*)&sval));
+					}
+				}
+				S = T;
+			}
+			//net_results.set(r, 0, singleton.data_at(0, 0));
+			float tmpv = testdata->data_at(r, 0);
+			float y = (float)_f((void*)&tmpv);
+			printf("%d \t%1.6f \t%1.6f \t%1.6f\n", r, S.data_at(0, 0), y, S.data_at(0, 0) - y);
+			rms += (S.data_at(0, 0) - y) * (S.data_at(0, 0) - y);
+		}
+		rms = sqrt(rms / testdata->nb_rows());
+		printf("..rms-deviation=%.3f\n", rms);
 	}
 };
 

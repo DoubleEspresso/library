@@ -224,7 +224,7 @@ public:
 	Matrix(int r, int c) : rows(r), cols(c), size(rows*cols), parallel(false), nb_threads(1)
 	{
 		data = new T[size];
-		memset(data, 0, sizeof(T)*size);
+		memset(data, T(0), sizeof(T)*size);
 		scan();
 		if (parallel)
 		{
@@ -514,17 +514,17 @@ Matrix<T> Matrix<T>::operator*(const Matrix& other)
 	}
 	else
 	{
-		clock.start();
+		//clock.start();
 		for (int r = 0; r < rows; ++r)
 		{
 			for (int c1 = 0; c1 < other.nb_cols(); ++c1)
 			{
 				T tmp = T(0);
-				for (int c = 0; c < cols; ++c) tmp += (*this)(r, c) * other(c, c1);
+				for (int c = 0; c < cols; ++c) tmp += (*this)(r,c) * other(c, c1);
 				res.set(r, c1, tmp);
 			}
 		}
-		clock.stop();
+		//clock.stop();
 		//clock.print("..serial matrix multiply");
 	}
 	/*
@@ -601,7 +601,7 @@ Matrix<T> Matrix<T>::operator+(const Matrix& other)
 	}
 	else
 	{
-		clock.start();
+		//clock.start();
 		for (int r = 0; r < rows; ++r)
 		{
 			for (int c1 = 0; c1 < cols; ++c1)
@@ -610,7 +610,7 @@ Matrix<T> Matrix<T>::operator+(const Matrix& other)
 				res.set(r, c1, tmp);
 			}
 		}
-		clock.stop();
+		//clock.stop();
 		//clock.print("..serial matrix multiply");
 	}
 	return res;
