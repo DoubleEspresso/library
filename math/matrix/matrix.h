@@ -17,6 +17,7 @@
 #include "../../system/hardware.h"
 #include "../../utils/array_utils.h"
 
+typedef double(*_func)(void*);  
 template <typename T> class Matrix;
 
 template<typename T>
@@ -317,6 +318,12 @@ public:
 	void submatrix(int r, int c); // in place return of matrix starting at idx (r,c)
 	size_t Size() const { return rows*cols; }
 
+	// operations (non-standard)
+	void schur_product(Matrix<T>& other); // in place
+	void schur_product(Matrix<T>& m1, Matrix<T> &m2);
+	void apply(_func f);
+	void apply(Matrix<T> * S, _func f); // non-in place (S is storage)
+
 	// matrix-matrix operations
 	Matrix operator+(const Matrix& other);
 	Matrix operator-(const Matrix& other);
@@ -456,6 +463,60 @@ void Matrix<T>::upper_triangle(Matrix& D)
 		for (int c = r; c < cols; ++c)
 		{
 			D.set(r, c, data[r * cols + c]);
+		}
+	}
+}
+template<typename T>
+void Matrix<T>::schur_product(Matrix<T>& other) // in place element-wise multiplication
+{
+	assert(other.nb_rows() == rows && other.nb_cols() == cols);
+	for (int r = 0; r < rows; ++r)
+	{
+		for (int c = 0; c < cols; ++c)
+		{
+			data[r*cols + c] = data[r*cols + c] * other.data_at(r*cols + c);
+		}
+	}
+}
+
+template<typename T>
+void Matrix<T>::schur_product(Matrix<T>& m1, Matrix<T>& m2) // in place element-wise multiplication
+{
+	assert(m1.nb_rows() == rows && m1.nb_cols() == cols);
+	assert(m2.nb_rows() == rows && m2.nb_cols() == cols);
+	for (int r = 0; r < rows; ++r)
+	{
+		for (int c = 0; c < cols; ++c)
+		{
+			data[r*cols + c] = m1.data_at(r*cols + c) * m2.data_at(r*cols + c);
+		}
+	}
+}
+
+template<typename T>
+void Matrix<T>::apply(_func f) // apply a 1-param function to all elements of the matrix
+{
+	assert(f != 0);
+	for (int r = 0; r < rows; ++r)
+	{
+		for (int c = 0; c < cols; ++c)
+		{
+			T val = data[r * cols + c];
+			data[r*cols + c] = (T)(f((void*)&val));
+		}
+	}
+}
+
+template<typename T>
+void Matrix<T>::apply(Matrix<T> * S, _func f) // sets *this(r,c) = f(S(r,c))
+{
+	assert(f != 0 && S->nb_rows() == rows && S->nb_cols() == cols);
+	for (int r = 0; r < rows; ++r)
+	{
+		for (int c = 0; c < cols; ++c)
+		{
+			T val = (T) S->data_at(r * cols + c);
+			data[r*cols + c] = (T)(f((void*)&val));
 		}
 	}
 }

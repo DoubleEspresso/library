@@ -8,14 +8,11 @@
 #include "..\..\math\matrix\vector.h"
 #include "..\..\math\matrix\linalg.h"
 
-// sandbox code for simple artificial neural network
+// sandbox code for vanilla artificial neural network
 // on the CPU.
 
 typedef double(*net_func)(void*); // sigmoid, cost func & derivatives. 
 
-
-								  // abstraction of a network transfer parameters from one layer to the next
-								  // to start: a link-layer is defined by a transfer matrix W_ij, and bias b_i
 class Link
 {
 	// transfer matrices definitions
@@ -103,14 +100,9 @@ public:
 		_a->clear();
 		_d->clear();
 	}
-	void compute_activations(net_func _f)
+	void compute_activations(net_func sig)
 	{
-		assert(_f != 0 && _z != 0);
-		for (int r = 0; r < _size; ++r)
-		{
-			float v = _z->data_at(r, 0); // assumed to be columnwise-data
-			_a->set(r, 0, (float)(_f((void*)&v)));
-		}
+		_a->apply(_z, sig);
 	}
 
 	void compute_zvals(Matrix<float> * a, Link * l)
@@ -124,22 +116,19 @@ public:
 
 	// note: these are hidden layer deltas only, the input/output layer data
 	// is stored in the main network class
-	void compute_deltas(Matrix<float> * ds, Link * l, Matrix<float> * dsig)
+	void compute_deltas(Matrix<float> * ds, Link * l, Matrix<float>& dsig)
 	{
 		// W_ij^^ * di --> W_ji di --> d'j 
 		assert(l != 0);
 		assert(l->W()->nb_rows() == ds->nb_rows());
-		assert(dsig->nb_rows() == l->W()->nb_cols());
+		assert(dsig.nb_rows() == l->W()->nb_cols());
 
 		//assert(ds->nb_rows() == dsig->nb_rows());
 		Matrix<float> wd(l->W()->nb_cols(), 1);
 		wd = l->W()->transpose() * (*ds);
 
 		// set the delta-vector by multiply previous result by dsigma
-		for (int r = 0; r < dsig->nb_rows(); ++r)
-		{
-			_d->set(r, 0, wd.data_at(r, 0) * dsig->data_at(r, 0)); //schur product
-		}
+		_d->schur_product(wd, dsig);
 	}
 };
 
@@ -189,8 +178,8 @@ public:
 				return;
 			}
 
-			if (j == 0) _L[j] = new Link(_dims[j + 1], 1); // input->hidden link
-			else if (j == _links - 1) _L[j] = new Link(1, _dims[j]); // hidden->output link
+			if (j == 0) _L[j] = new Link(_dims[j + 1], 1); // input->hidden link (note assumption of 1 input node)
+			else if (j == _links - 1) _L[j] = new Link(_dims[num_layers-1], _dims[j]); // hidden->output link
 			else _L[j] = new Link(_dims[j + 1], _dims[j]); // hidden->hidden link
 			
 			if (!_L[j] || !_L[j]->init(_rng))
@@ -224,17 +213,6 @@ public:
 	}
 	bool isValid() { return _valid; }
 
-	float compute_loss(Matrix<float>& y)
-	{
-		// check dims[y] == _dims[_layers-1] .. 
-		float r = 0;
-		for (int j = 0; j < _dims[_links - 1]; ++j)
-		{
-			float delta = y.data_at(j, 0) - y.data_at(j, 1); // y *assumed be* a nx2 matrix
-			r += (float)(*_cost)((void*)&delta);
-		}
-		return r;
-	}
 	// @params
 	//	_data : training data for layer L-1 .. nx2 matrix of input/output tuples
 	//  ia : input activation (for first layer only)
@@ -254,11 +232,9 @@ public:
 		if (idx == 0)
 		{
 			assert(xin->nb_rows() == _L[idx]->W()->nb_cols() && xin->nb_cols() == 1);
-			for (int r = 0; r < xin->nb_rows(); ++r)
-			{
-				float v = xin->data_at(r, 0); // assumed to be columnwise-data
-				xin->set(r, 0, (float)(_sig((void*)&v))); // note: this is updated by reference
-			}
+			
+			xin->apply(_sig); // activation of input layer
+
 			curr_nodes->compute_zvals(xin, _L[idx]);
 			curr_nodes->compute_activations(*_sig);
 			return;
@@ -276,69 +252,41 @@ public:
 			// dcost represents the derivative of the cost vector
 			assert(output != 0 && dcost != 0);
 			assert(dcost->nb_rows() == output->z()->nb_rows());
-			for (int r = 0; r < dcost->nb_rows(); ++r)
-			{
-				float v = output->z()->data_at(r, 0); // assumed to be columnwise-data
-				// note : this udpates the output-deltas by references (we need to store those)
-				float tmp = (float)(_dsig((void*)&v) * dcost->data_at(r, 0));
-				output->d()->set(r, 0, tmp);
-			}
+
+			output->d()->apply(output->z(), _dsig);
+			output->d()->schur_product(*dcost); 
 			return;
 		}
+
 		Nodes * curr_nodes = _nodes[idx - 1]; // pointer to the hidden nodes 
 		Nodes * prev_nodes = 0;
 		prev_nodes = (idx == _links - 1 ? output : _nodes[idx]);
 		assert(curr_nodes != 0);
 		assert(prev_nodes != 0);
-		curr_nodes->compute_deltas(prev_nodes->d(), _L[idx], compute_sigp(curr_nodes->z()));
+
+		Matrix<float> dsig(*curr_nodes->z()); dsig.apply(_dsig); // compute sig-prime on all z-values
+
+		curr_nodes->compute_deltas(prev_nodes->d(), _L[idx], dsig);
 	}
 
 	// @input
-	//		xin : an (possible) nx1 matrix of training data to be fed to the network .. 
-	//			forward pass will compute each node value, and activation, given a hidden layer
-	//			of weights and biases, from the input layer to the output layer
+	//	xin : an (possible) nx1 matrix of training data to be fed to the network .. 
+	//		forward pass will compute each node value, and activation, given a hidden layer
+	//		of weights and biases, from the input layer to the output layer
 	Nodes * forward_pass(Matrix<float> * xin)
 	{
-		{
-			// accounts for input layer and hidden layers 
-			for (int j = 0; j < _links - 1; ++j) forward_step(j, xin);
-		}
-		Nodes * output = new Nodes(_dims[_links]); // the output layer dimensions
-		assert((int)output->dim() == xin->nb_rows()); // these dimensions should match! (x,y) tuples for data is assumed!
-		{
-			// output layer here ...
-			output->compute_zvals(_nodes[_links - 2]->a(), _L[_links - 1]);
-			output->compute_activations(*_sig);
-		}
-		assert(output != 0);
+		for (int j = 0; j < _links - 1; ++j) forward_step(j, xin);
+
+		// output layer ...
+		Nodes * output = new Nodes(_dims[_links]);
+		output->compute_zvals(_nodes[_links - 2]->a(), _L[_links - 1]);
+		output->compute_activations(*_sig);
 		return output;
 	}
-	// @input
-	//		cost : an (possible) nx2 matrix of computed costs .. 
-	//			backward pass computes the dW, and dB deltas used to construct the gradients
-	//			for gradient descent updates of the weights and biases.
+
 	void backward_pass(Nodes * output, Matrix<float> * dcosts)
 	{
-		assert(output != 0 && dcosts != 0);
-		{
-			// backward step -- iterate over the layer-idx (from links + 1 to 0) 
-			for (int j = _links; j >= 1; --j) backward_step(j, output, dcosts);
-		}
-	}
-
-	// given an rx1 column vector, return an rx1 column
-	// vector of sig' values
-	Matrix<float> * compute_sigp(Matrix<float> * Z)
-	{
-		assert(_dsig != 0);
-		assert(Z->nb_rows() > 0 && Z->nb_cols() == 1);
-		Matrix<float> * res = new Matrix<float>(*Z);
-		for (int r = 0; r < Z->nb_rows(); ++r)
-		{
-			float v = Z->data_at(r, 0);
-			res->set(r, 0, (float)_dsig((void*)&v));
-		}
-		return res;
+		for (int j = _links; j >= 1; --j) backward_step(j, output, dcosts);
 	}
 
 	// stochastic (sampled) gradient descent
@@ -349,8 +297,12 @@ public:
 	//		samples: number of training epochs
 	bool sgd(Matrix<float> * _data, float lrate, size_t size, size_t samples)
 	{
+		std::vector<float> loss;
 		for (int sample = 0; sample < samples; ++sample) // loop over training epochs (number of samplings)
 		{
+			// 0. initialize dbg diagnostic data
+			float batch_loss = 0.0;
+
 			// 1. randomize input data for each training epoch
 			Matrix<float> * shuffled = new Matrix<float>(*_data);
 			_data->shuffle_rows(*shuffled);
@@ -381,6 +333,10 @@ public:
 				float v = y->data_at(0, 0) - batch->data_at(i, 1);
 				// float tmp = (float)_dcost((void*)&v); returning 0 always !?
 				dcosts->set(0, v);
+
+				// compute the loss at this point
+				batch_loss += 0.5 * v * v / batch->nb_rows();
+
 				//dcosts->print("..dcost value first pass..");
 				// 5. backward pass with dcost vector - will store all delta params at each layer of the network 
 				// to be used for gradient descent update of weights and biases for each layer of the network.
@@ -411,23 +367,35 @@ public:
 			}
 		
 			// 7. gradient descent update of the weights/biases using stored dW & dB arrays
-
 			float scale = lrate / batch->nb_rows();
 			for (int j = 0; j < _links; ++j)
 			{
 				_L[j]->update_params(scale * dW[j] , scale * dB[j]);
 			}
 
-			// 8. trace progress
-			if (sample%100==0) printf("..finished training epoch %d/%d\n", sample, samples);
+			// 8. dbg trace
+			loss.push_back(batch_loss);
+			if (sample % 100 == 0)
+			{
+				float l = 0.0; float stdev = 0.0;
+				for (int j = 0; j < loss.size(); ++j) l += loss[j] / loss.size();
+				for (int j = 0; j < loss.size(); ++j)
+				{
+					stdev += (l - loss[j]) * (l - loss[j]);
+				}
+				stdev = sqrt(stdev / (loss.size() - 1));
+				printf("..epoch %d/%d \t%1.3f \t%1.6f\n", sample, samples, l, stdev);
+				// reset
+				loss.clear();
+			}
 		
 		}
 
 		// 9. dbg - readout final network bias/weight params 
-		for (int j = 0; j < _links; ++j)
-		{
-			_L[j]->trace();
-		}
+		//for (int j = 0; j < _links; ++j)
+		//{
+		//	_L[j]->trace();
+		//}
 
 		return true;
 	}
@@ -441,29 +409,27 @@ public:
 			Matrix<float> S(1, 1);
 			S.clear();
 			S.set(0, 0, testdata->data_at(r, 0));
+			S.apply(_sig);
 			// forward pass on input data
 			for (int j = 0; j < _links; ++j)
 			{
-				Matrix<float> * wij = _L[j]->W(); Matrix<float> * bi = _L[j]->b();
-				
+				Matrix<float> * wij = _L[j]->W(); Matrix<float> * bi = _L[j]->b();				
 				S = (*wij) * S + (*bi);
-
-				Matrix<float> T(S);
-				//if (j != _links - 1)
-				{
-					for (int i = 0; i < S.nb_rows(); ++i)
-					{
-						float sval = S.data_at(i, 0);
-						T.set(i, 0, _sig((void*)&sval));
-					}
-				}
-				S = T;
+				S.apply(_sig);
 			}
-			//net_results.set(r, 0, singleton.data_at(0, 0));
+			
 			float tmpv = testdata->data_at(r, 0);
 			float y = (float)_f((void*)&tmpv);
-			printf("%d \t%1.6f \t%1.6f \t%1.6f\n", r, S.data_at(0, 0), y, S.data_at(0, 0) - y);
-			rms += (S.data_at(0, 0) - y) * (S.data_at(0, 0) - y);
+			
+			// collapse possibly n-results to 1d result (direct sum over output activations for now)
+			float net_result = 0.0;
+			for (int r = 0; r < S.nb_rows(); ++r)
+			{
+				net_result += S.data_at(r, 0);
+			}
+
+			printf("%d \t%1.6f \t%1.6f \t%1.6f \t%1.6f\n", r, tmpv, net_result, y, net_result - y);
+			rms += (net_result - y) * (net_result - y);
 		}
 		rms = sqrt(rms / testdata->nb_rows());
 		printf("..rms-deviation=%.3f\n", rms);

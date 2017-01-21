@@ -20,7 +20,10 @@ float _sig_inv(float x)
 float train_func(void *x)
 {
 	float * xf = (float*)(x);
-	return ((*xf >= -0.5 && *xf <= 0.5) ? 0.0 : 1.0);
+	// (*xf < 0.0 ? 0.0 : 1.0); 
+	// sin(2.0*(*xf))*sin(2.0*(*xf));
+	// ((*xf > -0.5 && *xf  < 0.5) ? 0.0 : 1.0);
+	return sin(4.0*(*xf))*sin(4.0*(*xf));
 }
 float _dsig(void *p)
 {
@@ -45,24 +48,26 @@ int main(int argc, char * argv[])
 
 
 	/*load data here*/
-	int training_size = 600;
+	int training_size = 2000;
 	Matrix<float> * training_data = new Matrix<float>(training_size, 2);
 
 
 	std::uniform_real_distribution<double> dist(-1, 1);
 	std::mt19937 rng;
 	for (int j = 0; j < training_size; ++j)
-	{
-		
-		double x = dist(rng); float y = ( (x >= -0.5 && x <= 0.5) ? 0.0 : 1.0);
+	{	
+		//(x < 0.0 ? 0.0 : 1.0);
+		//sin(2.0*x)*sin(2.0*x);
+		// ((x > -0.5 && x < 0.5) ? 0.0 : 1.0);
+		double x = dist(rng); float y = sin(4.0*x)*sin(4.0*x);
 		training_data->set(j, 0, x);
 		training_data->set(j, 1, y);
 	}
 
 	/*network params*/
-	float lrate = 2.14; // learning rate
-	size_t sample_size = 100; // batch size for sgd 
-	size_t tepochs = 10000; // nb of training epochs
+	float lrate = 20.14; // learning rate
+	size_t sample_size = 200; // batch size for sgd 
+	size_t tepochs = 22000; // nb of training epochs
 
 	int * nn_dims = new int[3];
 	nn_dims[0] = training_data->nb_rows();
@@ -86,7 +91,6 @@ int main(int argc, char * argv[])
 	{
 		xdata.set(j, 0, dist(rng));
 	}
-	xdata.print("..input data..");
 	net->verify(&xdata, (net_func)&train_func);
 
 	std::cin.get();
