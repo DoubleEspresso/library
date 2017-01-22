@@ -48,7 +48,7 @@ int main(int argc, char * argv[])
 
 
 	/*load data here*/
-	int training_size = 2000;
+	int training_size = 40000;
 	Matrix<float> * training_data = new Matrix<float>(training_size, 2);
 
 
@@ -65,13 +65,13 @@ int main(int argc, char * argv[])
 	}
 
 	/*network params*/
-	float lrate = 20.14; // learning rate
-	size_t sample_size = 200; // batch size for sgd 
-	size_t tepochs = 22000; // nb of training epochs
+	float lrate = 15.14; // learning rate
+	size_t sample_size = 600; // batch size for sgd 
+	size_t tepochs = 16000; // nb of training epochs
 
 	int * nn_dims = new int[3];
 	nn_dims[0] = training_data->nb_rows();
-	nn_dims[1] = 4;
+	nn_dims[1] = 5;
 	nn_dims[2] = 1;
 
 	//Network(Matrix<float> * indata, size_t hidden_layers, int * layer_dims, size_t num_layers)

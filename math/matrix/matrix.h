@@ -684,7 +684,7 @@ Matrix<T> Matrix<T>::operator-(const Matrix& other)
 	assert(this->cols == other.cols && this->rows == other.rows);
 	Matrix res(this->rows, this->cols);
 	Timer clock;
-	if (parallel)
+	if (false)
 	{
 		THREAD_HANDLE *  threads = new THREAD_HANDLE[nb_threads];
 		std::vector<parallel_data<T>*> thread_data;
@@ -733,7 +733,7 @@ Matrix<T> Matrix<T>::operator-(const Matrix& other)
 	}
 	else
 	{
-		clock.start();
+		//clock.start();
 		for (int r = 0; r < rows; ++r)
 		{
 			for (int c1 = 0; c1 < cols; ++c1)
@@ -742,7 +742,7 @@ Matrix<T> Matrix<T>::operator-(const Matrix& other)
 				res.set(r, c1, tmp);
 			}
 		}
-		clock.stop();
+		//clock.stop();
 		//clock.print("..serial matrix subtract");
 	}
 	return res;

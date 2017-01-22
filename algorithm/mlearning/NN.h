@@ -22,18 +22,23 @@ class Link
 	// relevant layer data
 	Matrix<float>* _W; // transfer matrix [rows(L+1:dim) x cols(L:dim)], e.g. transfer from L-1->L layer
 	Matrix<float>* _b; // bias vector [rows(L+1:dim)]
-
+	Matrix<float>* _vw; // momentum vector for w-gradient descent
+	Matrix<float>* _vb; // momentum vector for b-gradient descent
 public:
-	Link() : _W(0), _b(0) { }
+	Link() : _W(0), _b(0), _vw(0), _vb(0) { }
 	Link(size_t r, size_t c)
 	{
 		_W = new Matrix<float>(r, c);
+		_vw = new Matrix<float>(r, c);
 		_b = new Matrix<float>(r, 1);
+		_vb = new Matrix<float>(r, 1);
 	}
 	~Link()
 	{
 		if (_W) { delete _W; _W = 0; }
 		if (_b) { delete _b; _b = 0; }
+		if (_vw) { delete _vw; _vw = 0; }
+		if (_vb) { delete _vb; _vb = 0; }
 	}
 	bool init(std::mt19937& rng)
 	{
@@ -43,7 +48,12 @@ public:
 			for (int c = 0; c < _W->nb_cols(); ++c)
 			{
 				_W->set(r, c, (float)dist(rng));
-				if (c == 0) _b->set(r, c, (float)dist(rng));
+				_vw->set(r, c, 0.0); // particle starts at rest
+				if (c == 0)
+				{
+					_b->set(r, c, (float)dist(rng));
+					_vb->set(r, c, 0.0); // particle starts at rest
+				}
 			}
 		}
 		return true;
@@ -55,13 +65,19 @@ public:
 	}
 	Matrix<float> * W() { return _W; }
 	Matrix<float> * b() { return _b; }
+	Matrix<float> * vw() { return _vw; }
+	Matrix<float> * vb() { return _vb; }
 	// note : in stochastic gradient descent, we average over the batch of gradients
 	// to update (fixing L), these inputs are given by dW = 1/m*sum_m (dC/dW) etc.
 	void update_params(const Matrix<float>& dW, const Matrix<float>& dB)
 	{
-		// occasionally fails .. (different sizes in - operator).
-		(*_W) = (*_W) - dW; // gradient descent for weights
-		(*_b) = (*_b) - dB; // gradient descent for biases
+		// momentum update (nesterov momentum)
+		Matrix<float> vw_prev(*_vw); Matrix<float> vb_prev(*_vb);
+		float mu = 0.90;
+		(*_vw) = mu * (*_vw) - dW;
+		(*_vb) = mu * (*_vb) - dB;
+		(*_W) = (*_W) - mu * (vw_prev) + (1.0 + mu) * (*_vw); // gradient descent for weights
+		(*_b) = (*_b) - mu * vb_prev + (1.0 + mu) * (*_vb); // gradient descent for biases
 	}
 };
 
