@@ -13,10 +13,6 @@ float _sig(void *p)
 	float * pf = (float*)(p);
 	return 1.0 / (1.0 + exp(-1.0 * (*pf)));
 }
-float _sig_inv(float x)
-{
-	return -1.0 * log(1.0 / x - 1.0);
-}
 float train_func(void *x)
 {
 	float * xf = (float*)(x);
@@ -24,15 +20,18 @@ float train_func(void *x)
 	// sin(2.0*(*xf))*sin(2.0*(*xf));
 	// ((*xf > -0.5 && *xf  < 0.5) ? 0.0 : 1.0);
 	// sin(4.0*(*xf))*sin(4.0*(*xf))
-	return (*xf) * (*xf);
+	return sin(2.0*(*xf))*sin(2.0*(*xf));
 }
 float _dsig(void *p)
 {
 	return  1.0 * _sig(p) * (1.0 - _sig(p));
 }
-float _cost(void *p)
+float _cost(void *p) // cross entropy
 {
-	return 0; // not needed
+	Matrix<float> * ay = (Matrix<float>*)(p);
+	float a = ay->data_at(0, 0);
+	float y = ay->data_at(0, 1);
+	return -1.0 * ( y * log(a) + (1.0 - y) * log(1 - a));
 }
 float _dcost(void *p)
 {
@@ -61,19 +60,19 @@ int main(int argc, char * argv[])
 		//sin(2.0*x)*sin(2.0*x);
 		// ((x > -0.5 && x < 0.5) ? 0.0 : 1.0);
 		// 0.25 * (2.0*x*x + cos(10.0*x) * cos(10.0*x) + sin(2.0*x)*sin(2.0*x))
-		double x = dist(rng); float y = x*x;
+		double x = dist(rng); float y = sin(2.0*x)*sin(2.0*x);
 		training_data->set(j, 0, x);
 		training_data->set(j, 1, y);
 	}
 
 	/*network params*/
-	float lrate = 0.04; // learning rate
-	size_t sample_size = 600; // batch size for sgd 
+	float lrate = 0.14; // learning rate
+	size_t sample_size = 10000; // batch size for sgd 
 	size_t tepochs = 16000; // nb of training epochs
 
 	int * nn_dims = new int[3];
 	nn_dims[0] = training_data->nb_rows();
-	nn_dims[1] = 5;
+	nn_dims[1] = 4;
 	nn_dims[2] = 1;
 
 	//Network(Matrix<float> * indata, size_t hidden_layers, int * layer_dims, size_t num_layers)

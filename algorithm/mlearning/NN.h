@@ -344,15 +344,15 @@ public:
 				forward_pass(&singleton, output); // note: singleton is updated by reference
 
 				// 4. load cost-vector for backward pass
-				Matrix<float> * y = output->a();
-				assert(y->nb_rows() == dcosts.nb_rows());
-				float v = y->data_at(0, 0) - batch.data_at(i, 1);
-				// float tmp = (float)_dcost((void*)&v); returning 0 always !?
+				Matrix<float> * aj = output->a();
+				assert(aj->nb_rows() == dcosts.nb_rows());
+				float a = aj->data_at(0, 0); float y = batch.data_at(i, 1);
+				float v = (a - y) / (a * (1.0 - a) + 1e-9); // dCost for cross-entropy
 				dcosts.set(0, v);
 
 				// compute the loss at this point
-				batch_loss += 0.5 * v * v / batch.nb_rows();
-
+				batch_loss += -1.0 * (y * log(a) + (1.0 - y) * log(1 - a)) / batch.nb_rows();
+				
 				//dcosts->print("..dcost value first pass..");
 				// 5. backward pass with dcost vector - will store all delta params at each layer of the network 
 				// to be used for gradient descent update of weights and biases for each layer of the network.
