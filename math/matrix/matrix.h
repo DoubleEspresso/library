@@ -248,8 +248,6 @@ public:
 	{ 
 		if (data) 
 		{ 
-			size_t s = size;
-
 			delete[] data; 
 			data = 0; 
 		} 
@@ -308,7 +306,7 @@ public:
 	Vector<T> get_col(int c) const;
 	Matrix<T> * get_cols(int r, int n) const;
 	Vector<T> get_row(int r) const;
-	Matrix<T> * get_rows(int r, int n) const;
+	void get_rows(int start, int end, Matrix<T>& res) const;
 	void set_col(int c, const Vector<T>& vin) const;
 	void set_row(int r, const Vector<T>& rin) const;
 	//void reshape(int r, int c) const;
@@ -781,12 +779,11 @@ Vector<T> Matrix<T>::get_row(int r) const
 
 // returns n x cols submatrix of n-rows, starting at row-index r.
 template<typename T>
-Matrix<T> * Matrix<T>::get_rows(int r, int n) const
+void Matrix<T>::get_rows(int start, int end, Matrix<T>& res) const
 {
-	assert(r <= rows);
-	Matrix<T> * res = new Matrix<T>(n, cols);
-	for (int s = r, i = 0; s < r + n; ++s, ++i) res->set_row(i, get_row(s));
-	return res;
+	assert(start <= rows);
+	assert(res.nb_cols() == cols);
+	for (int s = start, i = 0; s < start + end; ++s, ++i) res.set_row(i, get_row(s));
 }
 
 template<typename T>
@@ -920,6 +917,8 @@ void Matrix<T>::shuffle_rows(Matrix<T>& storage)
 	shuffle<int>(indices, rows);
 
 	for (int j = 0; j < rows; ++j) storage.set_row(indices[j], get_row(j));
+
+	if (indices) { delete[] indices; indices = 0; }
 }
 
 // transform (in place) current data to subset of matrix data

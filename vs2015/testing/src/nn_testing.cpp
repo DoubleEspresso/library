@@ -23,7 +23,8 @@ float train_func(void *x)
 	// (*xf < 0.0 ? 0.0 : 1.0); 
 	// sin(2.0*(*xf))*sin(2.0*(*xf));
 	// ((*xf > -0.5 && *xf  < 0.5) ? 0.0 : 1.0);
-	return sin(4.0*(*xf))*sin(4.0*(*xf));
+	// sin(4.0*(*xf))*sin(4.0*(*xf))
+	return (*xf) * (*xf);
 }
 float _dsig(void *p)
 {
@@ -59,13 +60,14 @@ int main(int argc, char * argv[])
 		//(x < 0.0 ? 0.0 : 1.0);
 		//sin(2.0*x)*sin(2.0*x);
 		// ((x > -0.5 && x < 0.5) ? 0.0 : 1.0);
-		double x = dist(rng); float y = sin(4.0*x)*sin(4.0*x);
+		// 0.25 * (2.0*x*x + cos(10.0*x) * cos(10.0*x) + sin(2.0*x)*sin(2.0*x))
+		double x = dist(rng); float y = x*x;
 		training_data->set(j, 0, x);
 		training_data->set(j, 1, y);
 	}
 
 	/*network params*/
-	float lrate = 15.14; // learning rate
+	float lrate = 0.04; // learning rate
 	size_t sample_size = 600; // batch size for sgd 
 	size_t tepochs = 16000; // nb of training epochs
 

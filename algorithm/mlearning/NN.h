@@ -289,15 +289,12 @@ public:
 	//	xin : an (possible) nx1 matrix of training data to be fed to the network .. 
 	//		forward pass will compute each node value, and activation, given a hidden layer
 	//		of weights and biases, from the input layer to the output layer
-	Nodes * forward_pass(Matrix<float> * xin)
+	void forward_pass(Matrix<float> * xin, Nodes * output)
 	{
 		for (int j = 0; j < _links - 1; ++j) forward_step(j, xin);
-
-		// output layer ...
-		Nodes * output = new Nodes(_dims[_links]);
+		// output layer
 		output->compute_zvals(_nodes[_links - 2]->a(), _L[_links - 1]);
 		output->compute_activations(*_sig);
-		return output;
 	}
 
 	void backward_pass(Nodes * output, Matrix<float> * dcosts)
@@ -314,49 +311,52 @@ public:
 	bool sgd(Matrix<float> * _data, float lrate, size_t size, size_t samples)
 	{
 		std::vector<float> loss;
+		Nodes * output = new Nodes(_dims[_links]);
 		for (int sample = 0; sample < samples; ++sample) // loop over training epochs (number of samplings)
 		{
 			// 0. initialize dbg diagnostic data
 			float batch_loss = 0.0;
 
 			// 1. randomize input data for each training epoch
-			Matrix<float> * shuffled = new Matrix<float>(*_data);
-			_data->shuffle_rows(*shuffled);
+			Matrix<float> shuffled(*_data);
+			_data->shuffle_rows(shuffled);
 
 			// allocate storage for network parameters needed in gradient descent step
 			int out_size = _dims[_links]; // for 1d data, this should be a 1x1 scalar
-			Matrix<float> * dcosts = new Matrix<float>(out_size, 1);
+			Matrix<float> dcosts(out_size, 1);
 			std::vector<Matrix<float>> dW;
 			std::vector<Matrix<float>> dB;
 
 			// 2. loop over training sample - of n-rows (defines a sampled batch from the training data)
-			Matrix<float> * batch = shuffled->get_rows(0, size); // batch = [size]x[2] matrix
+			Matrix<float> batch(size, 2);
+			shuffled.get_rows(0, size, batch); // batch = [size]x[2] matrix
 
 			// note: we assume 1d data, so here a batch = [nx2] array .. loop over each x,y pair 
 			// todo: generalize the concept of "x" it could also be an array/image for example, as could the y-value.
-			for (int i = 0; i < batch->nb_rows(); ++i)
+			for (int i = 0; i < batch.nb_rows(); ++i)
 			{
 				// for testing, the input data is a collection of (xy) tuples
 				Matrix<float> singleton(1, 1);
-				singleton.set(0, 0, batch->data_at(i, 0));
+				singleton.set(0, 0, batch.data_at(i, 0));
 				
 				// 3. compute network parameters relevant for gradient descent (back-propagation)
-				Nodes * output = forward_pass(&singleton); // note: singleton is updated by reference
+				output->clear();
+				forward_pass(&singleton, output); // note: singleton is updated by reference
 
 				// 4. load cost-vector for backward pass
 				Matrix<float> * y = output->a();
-				assert(y->nb_rows() == dcosts->nb_rows());
-				float v = y->data_at(0, 0) - batch->data_at(i, 1);
+				assert(y->nb_rows() == dcosts.nb_rows());
+				float v = y->data_at(0, 0) - batch.data_at(i, 1);
 				// float tmp = (float)_dcost((void*)&v); returning 0 always !?
-				dcosts->set(0, v);
+				dcosts.set(0, v);
 
 				// compute the loss at this point
-				batch_loss += 0.5 * v * v / batch->nb_rows();
+				batch_loss += 0.5 * v * v / batch.nb_rows();
 
 				//dcosts->print("..dcost value first pass..");
 				// 5. backward pass with dcost vector - will store all delta params at each layer of the network 
 				// to be used for gradient descent update of weights and biases for each layer of the network.
-				backward_pass(output, dcosts); 
+				backward_pass(output, &dcosts); 
 
 				// 6. store the computed delta's for each batch (the deltas are overwritten for each training epoch)
 				// for each link-layer, adjust the stored weights with current values of deltas and activations
@@ -383,7 +383,7 @@ public:
 			}
 		
 			// 7. gradient descent update of the weights/biases using stored dW & dB arrays
-			float scale = lrate / batch->nb_rows();
+			float scale = lrate / batch.nb_rows();
 			for (int j = 0; j < _links; ++j)
 			{
 				_L[j]->update_params(scale * dW[j] , scale * dB[j]);
