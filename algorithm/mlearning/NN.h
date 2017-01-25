@@ -12,6 +12,7 @@
 // on the CPU.
 
 typedef double(*net_func)(void*); // sigmoid, cost func & derivatives. 
+#define ABS(x) (x < 0 ? -x : x)
 
 class Link
 {
@@ -69,14 +70,16 @@ public:
 	Matrix<float> * vb() { return _vb; }
 	// note : in stochastic gradient descent, we average over the batch of gradients
 	// to update (fixing L), these inputs are given by dW = 1/m*sum_m (dC/dW) etc.
-	void update_params(const Matrix<float>& dW, const Matrix<float>& dB)
+	void update_params(const Matrix<float>& dW, const Matrix<float>& dB, size_t _size)
 	{
 		// momentum update (nesterov momentum)
 		Matrix<float> vw_prev(*_vw); Matrix<float> vb_prev(*_vb);
 		float mu = 0.90;
+		float lambda = 500.0;
+		float decay = 0.5 * lambda / (float)_size; // weight decay to prevent overfitting (=0.5*lambda/n)
 		(*_vw) = mu * (*_vw) - dW;
 		(*_vb) = mu * (*_vb) - dB;
-		(*_W) = (*_W) - mu * (vw_prev) + (1.0 + mu) * (*_vw); // gradient descent for weights
+		(*_W) = (1.0f - decay)*(*_W) - mu * (vw_prev) + (1.0 + mu) * (*_vw); // gradient descent for weights
 		(*_b) = (*_b) - mu * vb_prev + (1.0 + mu) * (*_vb); // gradient descent for biases
 	}
 };
@@ -315,7 +318,10 @@ public:
 		for (int sample = 0; sample < samples; ++sample) // loop over training epochs (number of samplings)
 		{
 			// 0. initialize dbg diagnostic data
-			float batch_loss = 0.0;
+			float batch_loss = 0.0; // feedback for learning parameter
+			float acc = 0; // % of training data correctly classified
+			float eps = 2.0e-2; // acceptance cutoff
+			int ncorr = 0; // counter for nb correct
 
 			// 1. randomize input data for each training epoch
 			Matrix<float> shuffled(*_data);
@@ -352,7 +358,8 @@ public:
 
 				// compute the loss at this point
 				batch_loss += -1.0 * (y * log(a) + (1.0 - y) * log(1 - a)) / batch.nb_rows();
-				
+				if (ABS(y - a) <= eps) ++ncorr;
+
 				//dcosts->print("..dcost value first pass..");
 				// 5. backward pass with dcost vector - will store all delta params at each layer of the network 
 				// to be used for gradient descent update of weights and biases for each layer of the network.
@@ -386,21 +393,28 @@ public:
 			float scale = lrate / batch.nb_rows();
 			for (int j = 0; j < _links; ++j)
 			{
-				_L[j]->update_params(scale * dW[j] , scale * dB[j]);
+				_L[j]->update_params(scale * dW[j] , scale * dB[j], batch.nb_rows() * samples);
 			}
 
 			// 8. dbg trace
 			loss.push_back(batch_loss);
 			if (sample % 100 == 0)
 			{
-				float l = 0.0; float stdev = 0.0;
-				for (int j = 0; j < loss.size(); ++j) l += loss[j] / loss.size();
-				for (int j = 0; j < loss.size(); ++j)
+				if (sample == 0)
 				{
-					stdev += (l - loss[j]) * (l - loss[j]);
+					printf("..training: [epoch] [total epochs] [avg loss] [stdev loss] [accuracy]\n");
 				}
-				stdev = sqrt(stdev / (loss.size() - 1));
-				printf("..epoch %d/%d \t%1.3f \t%1.6f\n", sample, samples, l, stdev);
+				else
+				{
+					float l = 0.0; float stdev = 0.0;
+					for (int j = 0; j < loss.size(); ++j) l += loss[j] / loss.size();
+					for (int j = 0; j < loss.size(); ++j)
+					{
+						stdev += (l - loss[j]) * (l - loss[j]);
+					}
+					stdev = sqrt(stdev / (loss.size() - 1));
+					printf(" %d %d \t%1.3f %1.6f \t%1.2f\n", sample, samples, l, stdev, 100.0 * ncorr / (float)batch.nb_rows());
+				}
 				// reset
 				loss.clear();
 			}
