@@ -8,12 +8,12 @@
 
 void parse_args(int argc, char*argv[]);
 
-float _sig(void *p)
+double _sig(void *p)
 {
 	float * pf = (float*)(p);
-	return 1.0 / (1.0 + exp(-1.0 * (*pf)));
+	return  1.0 / (float)(1.0 + expf(-1.0 * (*pf)));
 }
-float train_func(void *x)
+double train_func(void *x)
 {
 	float * xf = (float*)(x);
 	// (*xf < 0.0 ? 0.0 : 1.0); 
@@ -22,21 +22,21 @@ float train_func(void *x)
 	// sin(4.0*(*xf))*sin(4.0*(*xf))
 	return sin(2.0*(*xf))*sin(2.0*(*xf));
 }
-float _dsig(void *p)
+double _dsig(void *p)
 {
-	return  1.0 * _sig(p) * (1.0 - _sig(p));
+	return 1.0 * _sig(p) * (1.0 - _sig(p));
 }
-float _cost(void *p) // cross entropy
+double _cost(void *p) // cross entropy
 {
 	Matrix<float> * ay = (Matrix<float>*)(p);
 	float a = ay->data_at(0, 0);
 	float y = ay->data_at(0, 1);
 	return -1.0 * ( y * log(a) + (1.0 - y) * log(1 - a));
 }
-float _dcost(void *p)
+double _dcost(void *p)
 {
 	float * pf = (float*)p;
-	return (float)1.0 * (*pf);
+	return 1.0 * (*pf);
 }
 
 int main(int argc, char * argv[])
