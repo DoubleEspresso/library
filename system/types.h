@@ -14,6 +14,7 @@
 #elif _WIN32
 #include <cstdint>
 
+
 typedef unsigned int uint;
 
 typedef __int8 int8t; // int8_t collides with signed char

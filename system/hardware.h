@@ -17,6 +17,9 @@
 #include <cuda_runtime.h>
 #include <helper_cuda.h>
 
+// windows warns against sprintf..
+#define sprintf sprintf_s
+
 namespace Hardware
 {
 	unsigned cpu_count(bool &hyperthreading);
