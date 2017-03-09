@@ -44,22 +44,6 @@ int main(int argc, char * argv[])
 {
 	parse_args(argc, argv);
 
-	/*test some csv parsing for fun here*/
-	// read_csv<float>(std::string fname, unsigned int ncols, std::string format_str, void * container);
-	//std::vector<float> results;
-	/*if (!FileIO::read_csv<float>("A:\\code\\test-data\\prima-indians-data.csv", 9, "%f%c", results))
-	{
-		printf("..failure to load CSV file :(\n");
-		return -1;
-	}
-	for (int j = 0; j < results.size(); ++j)
-	{	
-		if (j>0 && j % 9 == 0) printf("\n");
-		printf("%f ", results[j]);
-	}*/
-
-	
-	//std::vector<float> test({ 1, 122, 90, 51, 220, (float)49.7, (float)0.325, 31}); // 1
 	NaiveBayes nb("A:\\code\\test-data\\prima-indians-data.csv", 9, "%f%c");
 	nb.train(2);
 	std::vector<float> d = nb.data();
