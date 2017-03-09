@@ -46,8 +46,7 @@ int main(int argc, char * argv[])
 
 	NaiveBayes nb("A:\\code\\test-data\\prima-indians-data.csv", 9, "%f%c");
 	nb.train(2);
-	std::vector<float> d = nb.data();
-	float acc = nb.validate(d);
+	float acc = nb.validate(nb.data());
 	printf("..%.3f percent accuracy\n", acc * 100.0);
 	
 	//std::mt19937 _rng; // mersenne twister

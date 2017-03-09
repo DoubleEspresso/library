@@ -44,11 +44,11 @@ public:
 			counts.push_back(0);
 		}
 
-		// purpose: compute the means for each feature in each class (based on the following assumptions)..
-		// note: last element is assumed to be the "classifier" .. data that tells us which class the feature set belongs to
-		// further assumption: data is formated such that the last index per row will range from [0..k] for k-classes, i.e. it directly
-		// indexes the class we are interested in.
-		// even further assumption: that the data is not "jagged" e.g. rows * ncols = data.size(), so we can get nrows = data.size() / ncols;
+		// purpose: compute the mean/sigma array for each feature per class
+		// data parsing assumptions:
+		//	1. last element is assumed to be the "classifier"..indicates class the feature belongs to
+		//  2. data is formated such that the last index per row indexes the class 
+		//  3. the data are not "jagged" e.g. rows * ncols = data.size()
 		float nrow = (float) (ncols > 0 ? (float) csv_data.size() / (float) ncols : 1);
 		for (int j = ncols - 1, row = 0; j < csv_data.size(); j += ncols, ++row)
 		{
@@ -68,7 +68,6 @@ public:
 			}
 		}
 
-		// purpose: compute the stdev for each feature given the means
 		for (int j = ncols - 1, row = 0; j < csv_data.size(); j += ncols, ++row)
 		{
 			// do not include the last col in this loop
@@ -88,16 +87,8 @@ public:
 				sigmas[c][k] = sqrt(sigmas[c][k] / ((float)counts[c] - 1));
 			}
 		}
-
-		// dbg.
-		/*for (int c = 0; c < means.size(); ++c)
-		{
-			for (int j = 0; j < ncols - 1; ++j)
-			{
-				printf("mean[%d][%d] = %.3f\tsigma[%d][%d] = %.3f\n", c, j, means[c][j], c,j, sigmas[c][j]);
-			}
-		}*/
 	}
+
 	int classify(std::vector<float> in)
 	{
 		if (in.size() != ncols - 1)
