@@ -1,5 +1,5 @@
-#ifndef fft_exp_h
-#define fft_exp_h
+#ifndef BASE_EXP_H
+#define BASE_EXP_H
 
 #pragma once 
 
@@ -65,6 +65,9 @@ namespace QEXP
 
 		return x * u.d;
 	}
-	inline Complex<double> exp(Complex<double> x) { return NULL; }
+	inline Complex<double> expi(double x) 
+	{ 
+		return NULL;
+	}
 }
 #endif

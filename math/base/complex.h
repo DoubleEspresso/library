@@ -14,7 +14,7 @@ struct Complex
   Complex(const T& other) : real(other), imag(0) {};
   ~Complex() {};
   
-  Complex operator=(const Complex& other) { this->imag = other.imag; this->real = other.real; }
+  Complex operator=(const Complex& other) { this->imag = other.imag; this->real = other.real; return *this; }
 
   // basic operations
   Complex conj() { return Complex<T>(real, -imag); }
@@ -208,6 +208,4 @@ inline Complex<T> operator-(const T& x, const Complex<T>& other)
 typedef Complex<double> Complex_d;
 typedef Complex<float> Complex_f;
 typedef Complex<int> Complex_i;
-
-
 #endif
