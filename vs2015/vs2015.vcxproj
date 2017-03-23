@@ -156,6 +156,7 @@
   <ItemGroup>
     <ClCompile Include="..\algorithm\mlearning\PBIL.h" />
     <ClCompile Include="..\algorithm\search\union.cpp" />
+    <ClCompile Include="..\math\fft\fft.cpp" />
     <ClCompile Include="..\math\integrate\gauss_quadrature.cpp" />
     <ClCompile Include="..\math\matrix\linalg.cpp" />
     <ClCompile Include="..\utils\exports.cpp" />
@@ -169,6 +170,9 @@
     <ClInclude Include="..\diagnostics\stopwatch.h" />
     <ClInclude Include="..\math\base\complex.h" />
     <ClInclude Include="..\math\base\constants.h" />
+    <ClInclude Include="..\math\base\distribution.h" />
+    <ClInclude Include="..\math\base\exp.h" />
+    <ClInclude Include="..\math\fft\fft.h" />
     <ClInclude Include="..\math\integrate\gauss_quadrature.h" />
     <ClInclude Include="..\math\integrate\interpolate.h" />
     <ClInclude Include="..\math\integrate\legendre.h" />
@@ -185,7 +189,6 @@
     <ClInclude Include="..\utils\definitions.h" />
     <ClInclude Include="..\utils\log.h" />
     <ClInclude Include="..\utils\timer.h" />
-    <ClInclude Include="cuda_utilities.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

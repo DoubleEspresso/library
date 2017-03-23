@@ -2,6 +2,7 @@
 #define LIB_MATHBASE_COMPLEX
 
 #include <cmath>
+#include "constants.h"
 
 template<typename T>
 struct Complex
@@ -20,6 +21,8 @@ struct Complex
   T norm() { return T(real*real+imag*imag); }
   T abs() { return T(sqrt( norm() )); }
   Complex sqrt();
+  Complex root(double j, double N); // root of unity
+
   Complex operator+(const Complex& other);
   Complex operator-(const Complex& other);
   Complex operator*(const Complex& other);
@@ -39,9 +42,16 @@ struct Complex
   Complex operator+=(const T& other);
   Complex operator-=(const T& other);
   Complex operator*=(const T& other);
-  Complex operator/=(const T& other);
-
+  Complex operator/=(const T& other); 
 };
+
+template<typename T>
+inline Complex<T> Complex<T>::root(double j, double N)
+{
+	double f = PI2 * j / N;
+	Complex<T> r(cos(f), sin(f));
+	return r;
+}
 
 // The principal root of a complex number -- 
 // using polar form z^0.5 = sqrt(r)*exp{i*arctan(theta)*0.5} --> euler's formula exp{i*theta} = cos + i sin and half angle formulas 

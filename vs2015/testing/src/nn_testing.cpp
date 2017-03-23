@@ -47,12 +47,8 @@ int main(int argc, char * argv[])
 	NaiveBayes nb("A:\\code\\test-data\\prima-indians-data.csv", 9, "%f%c");
 	nb.train(2);
 	float acc = nb.validate(nb.data());
-	printf("..%.3f percent accuracy\n", acc * 100.0);
+	printf(".. %.3f percent accuracy\n", acc * 100.0);
 	
-	//std::mt19937 _rng; // mersenne twister
-	//std::uniform_real_distribution<double> dist(0, 1);
-
-
 	/*load data here*/
 	int training_size = 40000;
 	Matrix<float> * training_data = new Matrix<float>(training_size, 2);
